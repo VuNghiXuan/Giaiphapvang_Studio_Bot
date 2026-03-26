@@ -13,6 +13,7 @@ from core.ai_manager import AIManager
 from views.dashboard_view import render_dashboard
 from views.recorder_view import render_recorder
 from views.editor_view import render_editor
+from core.auto_knowledge_base import KnowledgeBase 
 
 # --- 0. KHỞI TẠO HỆ THỐNG ---
 load_dotenv()
@@ -133,6 +134,9 @@ def main():
         st.markdown("<br>", unsafe_allow_html=True)
 
         # --- ĐIỀU HƯỚNG NỘI DUNG TỪNG TAB ---
+        # 2. Khởi tạo một đối tượng (instance) từ class đó
+        kb = KnowledgeBase()
+        
         if selected == titles[0]:
             # QUAY THỦ CÔNG (Code cũ của Vũ)
             render_recorder(sub_path)
@@ -141,7 +145,7 @@ def main():
             # QUAY TỰ ĐỘNG (Tab Robot mới)
             try:
                 from views.auto_recorder_view import render_auto_recorder
-                render_auto_recorder(sub_path)
+                render_auto_recorder(sub_path, kb)
             except ImportError:
                 st.error("Chưa tìm thấy file views/auto_recorder_view.py!")
             
