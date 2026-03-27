@@ -1,0 +1,765 @@
+{
+    "App_Mua bán": {
+        "url": "https://giaiphapvang.net/home/trading/",
+        "structure": {
+            "buttons": [
+                {
+                    "text": "Go to home",
+                    "id": ""
+                }
+            ],
+            "inputs": [],
+            "links": [
+                {
+                    "text": "Need help?",
+                    "href": "/faqs/"
+                }
+            ]
+        }
+    },
+    "App_Hệ thống": {
+        "url": "https://giaiphapvang.net/dashboard/",
+        "structure": {
+            "buttons": [
+                {
+                    "text": "Thông tin công ty",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục sản phẩm",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục kho",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục vật tư, hàng hóa, dịch vụ",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục đối tác, khách hàng",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục ngân hàng, tài chính",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục địa chỉ",
+                    "id": ""
+                },
+                {
+                    "text": "Nhập hàng & Giá vốn",
+                    "id": ""
+                },
+                {
+                    "text": "Kho & Quầy thu ngân",
+                    "id": ""
+                },
+                {
+                    "text": "S",
+                    "id": ""
+                }
+            ],
+            "inputs": [],
+            "links": [
+                {
+                    "text": "Cấu hình hệ thống",
+                    "href": "/settings/system-settings/"
+                },
+                {
+                    "text": "Cấu hình quy trình duyệt",
+                    "href": "/settings/approval-process-settings/"
+                },
+                {
+                    "text": "Ứng dụng",
+                    "href": "/administrator/application/"
+                },
+                {
+                    "text": "Nhóm người dùng",
+                    "href": "/administrator/user-group/"
+                },
+                {
+                    "text": "Người dùng",
+                    "href": "/administrator/user/"
+                },
+                {
+                    "text": "Phân quyền",
+                    "href": "/administrator/permission/"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Cấu hình hệ thống": {
+        "url": "https://giaiphapvang.net/settings/system-settings/",
+        "structure": {
+            "buttons": [
+                {
+                    "text": "Thông tin công ty",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục sản phẩm",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục kho",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục vật tư, hàng hóa, dịch vụ",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục đối tác, khách hàng",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục ngân hàng, tài chính",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục địa chỉ",
+                    "id": ""
+                },
+                {
+                    "text": "Nhập hàng & Giá vốn",
+                    "id": ""
+                },
+                {
+                    "text": "Kho & Quầy thu ngân",
+                    "id": ""
+                },
+                {
+                    "text": "S",
+                    "id": ""
+                },
+                {
+                    "text": "Chỉnh sửa",
+                    "id": ""
+                }
+            ],
+            "inputs": [
+                {
+                    "label": "Ngôn ngữ mặc định",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Múi giờ hệ thống",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Định dạng ngày",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Định dạng số",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Đơn vị trọng lượng (mặc định)",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Đơn vị tiền tệ",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Số thập phân trọng lượng",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Số thập phân giá trị tiền",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Quy tắc làm tròn lượng",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Quy tắc làm tròn số tiền",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Push Notification",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Thời gian tự động đăng xuất (phút)",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Chu kỳ backup dữ liệu",
+                    "name": "",
+                    "type": "text"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                }
+            ],
+            "links": [
+                {
+                    "text": "Cấu hình hệ thống",
+                    "href": "/settings/system-settings/"
+                },
+                {
+                    "text": "Cấu hình quy trình duyệt",
+                    "href": "/settings/approval-process-settings/"
+                },
+                {
+                    "text": "Ứng dụng",
+                    "href": "/administrator/application/"
+                },
+                {
+                    "text": "Nhóm người dùng",
+                    "href": "/administrator/user-group/"
+                },
+                {
+                    "text": "Người dùng",
+                    "href": "/administrator/user/"
+                },
+                {
+                    "text": "Phân quyền",
+                    "href": "/administrator/permission/"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Cấu hình quy trình duyệt": {
+        "url": "https://giaiphapvang.net/settings/approval-process-settings/",
+        "structure": {
+            "buttons": [
+                {
+                    "text": "Thông tin công ty",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục sản phẩm",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục kho",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục vật tư, hàng hóa, dịch vụ",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục đối tác, khách hàng",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục ngân hàng, tài chính",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục địa chỉ",
+                    "id": ""
+                },
+                {
+                    "text": "Nhập hàng & Giá vốn",
+                    "id": ""
+                },
+                {
+                    "text": "Kho & Quầy thu ngân",
+                    "id": ""
+                },
+                {
+                    "text": "S",
+                    "id": ""
+                },
+                {
+                    "text": "Đề xuất vật tư",
+                    "id": ""
+                },
+                {
+                    "text": "Phiếu giao thợ sửa chữa",
+                    "id": ""
+                },
+                {
+                    "text": "Phiếu giao thợ tân trang",
+                    "id": ""
+                },
+                {
+                    "text": "Nhà cung cấp",
+                    "id": ""
+                },
+                {
+                    "text": "Phiếu nhận tân trang từ thợ",
+                    "id": ""
+                },
+                {
+                    "text": "Phiếu nhập kho",
+                    "id": ""
+                },
+                {
+                    "text": "Phiếu nhập vàng nguyên liệu",
+                    "id": ""
+                },
+                {
+                    "text": "Toa hàng nhà cung cấp",
+                    "id": ""
+                },
+                {
+                    "text": "Cột",
+                    "id": "_r_p_"
+                },
+                {
+                    "text": "0",
+                    "id": "_r_t_"
+                },
+                {
+                    "text": "Mật độ",
+                    "id": "_r_11_"
+                },
+                {
+                    "text": "Xuất",
+                    "id": "_r_15_"
+                }
+            ],
+            "inputs": [
+                {
+                    "label": "Tìm kiếm…",
+                    "name": "",
+                    "type": "search"
+                },
+                {
+                    "label": "table-pagination-select",
+                    "name": "table-pagination-select",
+                    "type": "text"
+                }
+            ],
+            "links": [
+                {
+                    "text": "Cấu hình hệ thống",
+                    "href": "/settings/system-settings/"
+                },
+                {
+                    "text": "Cấu hình quy trình duyệt",
+                    "href": "/settings/approval-process-settings/"
+                },
+                {
+                    "text": "Ứng dụng",
+                    "href": "/administrator/application/"
+                },
+                {
+                    "text": "Nhóm người dùng",
+                    "href": "/administrator/user-group/"
+                },
+                {
+                    "text": "Người dùng",
+                    "href": "/administrator/user/"
+                },
+                {
+                    "text": "Phân quyền",
+                    "href": "/administrator/permission/"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Ứng dụng": {
+        "url": "https://giaiphapvang.net/administrator/application/",
+        "structure": {
+            "buttons": [
+                {
+                    "text": "Thông tin công ty",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục sản phẩm",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục kho",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục vật tư, hàng hóa, dịch vụ",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục đối tác, khách hàng",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục ngân hàng, tài chính",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục địa chỉ",
+                    "id": ""
+                },
+                {
+                    "text": "Nhập hàng & Giá vốn",
+                    "id": ""
+                },
+                {
+                    "text": "Kho & Quầy thu ngân",
+                    "id": ""
+                },
+                {
+                    "text": "S",
+                    "id": ""
+                }
+            ],
+            "inputs": [],
+            "links": [
+                {
+                    "text": "Cấu hình hệ thống",
+                    "href": "/settings/system-settings/"
+                },
+                {
+                    "text": "Cấu hình quy trình duyệt",
+                    "href": "/settings/approval-process-settings/"
+                },
+                {
+                    "text": "Ứng dụng",
+                    "href": "/administrator/application/"
+                },
+                {
+                    "text": "Nhóm người dùng",
+                    "href": "/administrator/user-group/"
+                },
+                {
+                    "text": "Người dùng",
+                    "href": "/administrator/user/"
+                },
+                {
+                    "text": "Phân quyền",
+                    "href": "/administrator/permission/"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Nhóm người dùng": {
+        "url": "https://giaiphapvang.net/administrator/user-group/",
+        "structure": {
+            "buttons": [
+                {
+                    "text": "Thông tin công ty",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục sản phẩm",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục kho",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục vật tư, hàng hóa, dịch vụ",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục đối tác, khách hàng",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục ngân hàng, tài chính",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục địa chỉ",
+                    "id": ""
+                },
+                {
+                    "text": "Nhập hàng & Giá vốn",
+                    "id": ""
+                },
+                {
+                    "text": "Kho & Quầy thu ngân",
+                    "id": ""
+                },
+                {
+                    "text": "S",
+                    "id": ""
+                },
+                {
+                    "text": "Tạo mới",
+                    "id": ""
+                },
+                {
+                    "text": "Cột",
+                    "id": "_r_r_"
+                },
+                {
+                    "text": "0",
+                    "id": "_r_v_"
+                },
+                {
+                    "text": "Mật độ",
+                    "id": "_r_13_"
+                },
+                {
+                    "text": "Xuất",
+                    "id": "_r_17_"
+                }
+            ],
+            "inputs": [
+                {
+                    "label": "Tìm kiếm…",
+                    "name": "",
+                    "type": "search"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "table-pagination-select",
+                    "name": "table-pagination-select",
+                    "type": "text"
+                }
+            ],
+            "links": [
+                {
+                    "text": "Cấu hình hệ thống",
+                    "href": "/settings/system-settings/"
+                },
+                {
+                    "text": "Cấu hình quy trình duyệt",
+                    "href": "/settings/approval-process-settings/"
+                },
+                {
+                    "text": "Ứng dụng",
+                    "href": "/administrator/application/"
+                },
+                {
+                    "text": "Nhóm người dùng",
+                    "href": "/administrator/user-group/"
+                },
+                {
+                    "text": "Người dùng",
+                    "href": "/administrator/user/"
+                },
+                {
+                    "text": "Phân quyền",
+                    "href": "/administrator/permission/"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Người dùng": {
+        "url": "https://giaiphapvang.net/administrator/user/",
+        "structure": {
+            "buttons": [
+                {
+                    "text": "Thông tin công ty",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục sản phẩm",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục kho",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục vật tư, hàng hóa, dịch vụ",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục đối tác, khách hàng",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục ngân hàng, tài chính",
+                    "id": ""
+                },
+                {
+                    "text": "Danh mục địa chỉ",
+                    "id": ""
+                },
+                {
+                    "text": "Nhập hàng & Giá vốn",
+                    "id": ""
+                },
+                {
+                    "text": "Kho & Quầy thu ngân",
+                    "id": ""
+                },
+                {
+                    "text": "S",
+                    "id": ""
+                },
+                {
+                    "text": "Tạo mới",
+                    "id": ""
+                },
+                {
+                    "text": "Cột",
+                    "id": "_r_r_"
+                },
+                {
+                    "text": "0",
+                    "id": "_r_v_"
+                },
+                {
+                    "text": "Mật độ",
+                    "id": "_r_13_"
+                },
+                {
+                    "text": "Xuất",
+                    "id": "_r_17_"
+                }
+            ],
+            "inputs": [
+                {
+                    "label": "Tìm kiếm…",
+                    "name": "",
+                    "type": "search"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "Trường nhập liệu",
+                    "name": "",
+                    "type": "checkbox"
+                },
+                {
+                    "label": "table-pagination-select",
+                    "name": "table-pagination-select",
+                    "type": "text"
+                }
+            ],
+            "links": [
+                {
+                    "text": "Cấu hình hệ thống",
+                    "href": "/settings/system-settings/"
+                },
+                {
+                    "text": "Cấu hình quy trình duyệt",
+                    "href": "/settings/approval-process-settings/"
+                },
+                {
+                    "text": "Ứng dụng",
+                    "href": "/administrator/application/"
+                },
+                {
+                    "text": "Nhóm người dùng",
+                    "href": "/administrator/user-group/"
+                },
+                {
+                    "text": "Người dùng",
+                    "href": "/administrator/user/"
+                },
+                {
+                    "text": "Phân quyền",
+                    "href": "/administrator/permission/"
+                }
+            ]
+        }
+    }
+}

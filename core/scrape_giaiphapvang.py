@@ -1,6 +1,8 @@
 import asyncio
 import os
 import json
+import traceback
+import sys
 from playwright.async_api import async_playwright
 from dotenv import load_dotenv
 
@@ -9,134 +11,126 @@ load_dotenv()
 class StructureExtractor:
     def __init__(self, output_file="knowledge_source.json"):
         self.output_file = output_file
-        self.knowledge_data = {}
+        # Thống nhất dùng 1 biến kết quả duy nhất
+        self.results = {}
+        # Danh sách các từ khóa nút cần "đào sâu"
+        self.action_keywords = ["Thêm", "Sửa", "Lập phiếu", "Chi tiết", "Cấu hình"]
+        self.exclude_keywords = ["Đóng", "Hủy", "X", "Close", "Cancel"]
 
-    def save_to_file(self):
-        """Lưu dữ liệu hiện tại xuống file ngay lập tức"""
-        with open(self.output_file, 'w', encoding='utf-8') as f:
-            json.dump(self.knowledge_data, f, ensure_ascii=False, indent=4)
-
-    async def extract_page_structure(self, page, page_name):
-        print(f"🕵️ Đang trích xuất cấu trúc: {page_name}...")
-        
-        # Chờ đợi các phần tử MUI render xong
+    def save_to_json(self):
+        """Hàm ghi dữ liệu chuẩn xác vào file JSON"""
         try:
-            await page.wait_for_load_state("networkidle", timeout=10000)
-            await asyncio.sleep(3) # Chờ thêm 3s cho chắc ăn
-        except:
-            pass
+            with open(self.output_file, 'w', encoding='utf-8') as f:
+                json.dump(self.results, f, ensure_ascii=False, indent=4)
+            print(f"\n✅ [KẾT THÚC] Đã lưu tri thức vào: {self.output_file}")
+        except Exception as e:
+            print(f"❌ Lỗi khi ghi file: {e}")
 
-        structure = await page.evaluate('''() => {
-            const data = { buttons: [], inputs: [], links: [] };
-
-            // Tìm nút: Lấy cả text bên trong các thẻ phức tạp của MUI
-            document.querySelectorAll('button, [role="button"], a.MuiButton-root').forEach(el => {
-                const text = el.innerText.trim().split('\\n')[0]; // Lấy dòng đầu tiên của text
-                if (text && text.length < 50) {
-                    data.buttons.push({ text, id: el.id });
-                }
+    async def extract_page_content(self, page):
+        """Trích xuất Buttons, Inputs, Tables trong trang hiện tại"""
+        return await page.evaluate('''() => {
+            const data = { buttons: [], inputs: [], tables: [] };
+            
+            // Lấy nút (Dùng .push thay vì .append của Python)
+            document.querySelectorAll('main button, .content button, .MuiContainer-root button').forEach(btn => {
+                const txt = btn.innerText.trim().split('\\n')[0];
+                if (txt && txt.length < 30) data.buttons.push(txt);
             });
 
-            // Tìm Input: Ưu tiên lấy Label đi kèm
-            document.querySelectorAll('input, textarea').forEach(el => {
-                let label = "";
-                const id = el.id;
-                if (id) {
-                    const labelEl = document.querySelector(`label[for="${id}"]`);
-                    label = labelEl ? labelEl.innerText.trim() : "";
-                }
-                if (!label) label = el.getAttribute('placeholder') || el.getAttribute('name') || "Trường nhập liệu";
-                
-                data.inputs.push({
-                    label: label,
-                    name: el.getAttribute('name') || "",
-                    type: el.type
-                });
+            // Lấy nhãn Input
+            document.querySelectorAll('label, .MuiFormLabel-root').forEach(lb => {
+                const txt = lb.innerText.trim();
+                if (txt) data.inputs.push(txt);
             });
 
-            // Tìm Links: Chỉ lấy các link điều hướng chính
-            document.querySelectorAll('a').forEach(el => {
-                const text = el.innerText.trim();
-                const href = el.getAttribute('href');
-                if (text && href && !href.startsWith('http') && href !== '/') {
-                    data.links.push({ text, href });
-                }
+            // Lấy tiêu đề bảng
+            document.querySelectorAll('th').forEach(th => {
+                const txt = th.innerText.trim();
+                if (txt && !data.tables.includes(txt)) data.tables.push(txt);
             });
 
             return data;
         }''')
 
-        # Chỉ lưu nếu có dữ liệu
-        if structure['buttons'] or structure['inputs']:
-            self.knowledge_data[page_name] = {
-                "url": page.url,
-                "structure": structure
-            }
-            self.save_to_file() # Ghi file luôn sau mỗi trang
-            print(f"✅ Đã lưu dữ liệu trang {page_name}")
-        else:
-            print(f"⚠️ Trang {page_name} không có dữ liệu tương tác để lấy.")
-
     async def run(self):
         async with async_playwright() as p:
-            # Tắt headless để Vũ nhìn thấy nó đang làm gì
-            browser = await p.chromium.launch(headless=False) 
-            context = await browser.new_context(viewport={'width': 1366, 'height': 768})
+            # Chạy có giao diện để mày quan sát nó click
+            browser = await p.chromium.launch(headless=False, slow_mo=300)
+            context = await browser.new_context()
             page = await context.new_page()
 
-            # 1. Login
-            print("🔑 Đang đăng nhập...")
-            await page.goto("https://giaiphapvang.net/auth/jwt/sign-in/")
-            await page.fill("input[name='email']", os.getenv("USER_EMAIL"))
-            await page.fill("input[name='password']", os.getenv("USER_PASSWORD"))
-            await page.click("button[type='submit']")
-            
-            # Đợi chuyển hướng sang home
-            await page.wait_for_url("**/home/**", timeout=30000)
-            print("🏠 Đã vào trang Home.")
-            await asyncio.sleep(2)
+            # Lờ đi các lỗi vặt của web để không treo Bot
+            page.on("pageerror", lambda exc: print(f"⚠️ Web Alert (Bỏ qua): {exc}"))
 
-            # 2. Lấy danh sách App (Lọc thoáng hơn)
-            apps = await page.evaluate('''() => {
-                return Array.from(document.querySelectorAll('a'))
-                    .filter(a => a.href.includes('/dashboard') || a.href.includes('/trading'))
-                    .map(a => ({ text: a.innerText.trim(), href: a.href }));
-            }''')
+            try:
+                # --- BƯỚC 1: ĐĂNG NHẬP ---
+                print("🔑 [BƯỚC 1] Đang đăng nhập hệ thống...")
+                await page.goto("https://giaiphapvang.net/auth/jwt/sign-in/", timeout=60000)
+                await page.fill("input[name='email']", os.getenv("USER_EMAIL"))
+                await page.fill("input[name='password']", os.getenv("USER_PASSWORD"))
+                await page.click("button[type='submit']")
+                
+                # Chờ chuyển trang Dashboard
+                await page.wait_for_url("**/dashboard/**", timeout=30000)
+                print("🔓 Đăng nhập thành công!")
 
-            if not apps:
-                print("❌ Không tìm thấy App nào trên trang Home! Vũ kiểm tra lại selector thẻ 'a'.")
-                # Thử quét trang hiện tại (Home) xem có gì không
-                await self.extract_page_structure(page, "Trang_Home_Manual")
-            else:
-                print(f"📂 Tìm thấy {len(apps)} phân hệ.")
+                # --- BƯỚC 2: LẤY CÁC PHÂN HỆ CHÍNH ---
+                apps = await page.evaluate('''() => {
+                    return Array.from(document.querySelectorAll('a'))
+                        .filter(a => a.href.includes('/dashboard') || a.href.includes('/settings') || a.href.includes('/administrator'))
+                        .map(a => ({ text: a.innerText.trim(), href: a.href }));
+                }''')
 
-            for app in apps:
-                app_name = app['text'].split('\\n')[0]
-                try:
-                    print(f"🚀 Vào App: {app_name}")
+                for app in apps:
+                    print(f"\n🌍 [BƯỚC 2] Vào phân hệ: {app['text']}")
                     await page.goto(app['href'])
-                    await self.extract_page_structure(page, f"App_{app_name}")
-                    
-                    # Quét nhanh các menu sidebar
-                    sub_links = await page.evaluate('''() => {
-                        return Array.from(document.querySelectorAll('nav a, ul a'))
-                            .filter(a => a.innerText.trim().length > 0)
-                            .map(a => ({ text: a.innerText.trim().split('\\n')[0], href: a.href }))
-                            .slice(0, 5); // Lấy 5 menu đầu tiên
+                    await asyncio.sleep(3)
+
+                    # --- BƯỚC 3: QUÉT SIDEBAR ---
+                    menu_names = await page.evaluate('''() => {
+                        const items = Array.from(document.querySelectorAll('.MuiListItem-root, .sidebar li, a[class*="MuiListItemButton"]'));
+                        return [...new Set(items.map(el => el.innerText.trim().split('\\n')[0]))].filter(t => t.length > 2);
                     }''')
 
-                    for sub in sub_links:
-                        print(f"  ∟ Quét: {sub['text']}")
-                        await page.goto(sub['href'])
-                        await self.extract_page_structure(page, f"{app_name}_{sub['text']}")
-                    
-                    await page.goto(app['href']) 
-                except Exception as e:
-                    print(f"❌ Lỗi tại {app_name}: {e}")
+                    for menu_name in menu_names:
+                        print(f"  📍 [BƯỚC 3] Click Menu: '{menu_name}'")
+                        try:
+                            # Tìm và click chính xác vào menu text
+                            target_item = page.get_by_text(menu_name, exact=True).first
+                            if await target_item.is_visible():
+                                await target_item.click()
+                                await asyncio.sleep(2)
+                                
+                                # --- BƯỚC 4: LẤY TRI THỨC TRANG ---
+                                print(f"    🔍 [BƯỚC 4] Đang trích xuất: {page.url}")
+                                content = await self.extract_page_content(page)
+                                
+                                key = f"{app['text']}_{menu_name}"
+                                self.results[key] = {
+                                    "url": page.url,
+                                    "content": content,
+                                    "timestamp": str(asyncio.get_event_loop().time())
+                                }
+                            else:
+                                print(f"    ⚠️ Bỏ qua '{menu_name}' (không thấy trên UI)")
+                        except Exception as e:
+                            print(f"    ❌ Lỗi menu {menu_name}: {e}")
 
-            await browser.close()
-            print(f"🏁 XONG! File lưu tại: {os.path.abspath(self.output_file)}")
+            except Exception as e:
+                print(f"🔥 Lỗi nghiêm trọng: {e}")
+                traceback.print_exc()
+            finally:
+                await browser.close()
+                self.save_to_json()
 
+# Xử lý vòng lặp asyncio cho Windows (Python 3.13)
 if __name__ == "__main__":
+    if sys.platform == 'win32':
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    
     extractor = StructureExtractor()
-    asyncio.run(extractor.run())
+    try:
+        asyncio.run(extractor.run())
+    except RuntimeError as e:
+        if "Event loop is closed" not in str(e):
+            raise e
