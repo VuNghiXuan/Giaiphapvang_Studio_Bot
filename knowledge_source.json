@@ -2,1731 +2,3470 @@
     "App_Hệ thống": {
         "url": "https://giaiphapvang.net/dashboard/",
         "structure": {
-            "buttons": [],
+            "page_actions": [],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [],
             "inputs": [],
-            "tables": []
+            "row_actions_hidden": [],
+            "create_form_fields": []
         }
     },
     "Hệ thống_Công ty": {
         "url": "https://giaiphapvang.net/company/info/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Chỉnh sửa",
-                    "id": "",
-                    "is_submit": false
+                    "text": "Chỉnh sửa"
                 },
                 {
-                    "text": "Hủy",
-                    "id": "",
-                    "is_submit": false
+                    "text": "Hủy"
                 },
                 {
-                    "text": "Cập nhật",
-                    "id": "",
-                    "is_submit": true
+                    "text": "Cập nhật"
                 }
             ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [],
             "inputs": [
                 {
                     "label": "Mã công ty",
-                    "name": "code",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "code"
                 },
                 {
                     "label": "Tên công ty",
-                    "name": "name",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "name"
                 },
                 {
                     "label": "Mã số thuế",
-                    "name": "taxNumber",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "taxNumber"
                 },
                 {
                     "label": "Ngày thành lập",
-                    "name": "establishDate",
-                    "type": "text",
-                    "placeholder": "DD/MM/YYYY"
+                    "name": "establishDate"
                 },
                 {
                     "label": "Loại hình kinh doanh",
-                    "name": "companyType",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "companyType"
                 },
                 {
                     "label": "Điện thoại",
-                    "name": "phoneNumber",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "phoneNumber"
                 },
                 {
                     "label": "Số fax",
-                    "name": "faxNumber",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "faxNumber"
                 },
                 {
                     "label": "Email",
-                    "name": "email",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "email"
                 },
                 {
                     "label": "Website",
-                    "name": "website",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "website"
                 },
                 {
                     "label": "Quốc gia",
-                    "name": "countryId",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "countryId"
                 },
                 {
                     "label": "Tỉnh / Thành Phố",
-                    "name": "provinceId",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "provinceId"
                 },
                 {
                     "label": "Quận / Huyện",
-                    "name": "districtId",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "districtId"
                 },
                 {
                     "label": "Phường / Xã",
-                    "name": "wardId",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "wardId"
                 },
                 {
                     "label": "Số nhà, đường",
-                    "name": "_r_1e_",
-                    "type": "text",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "file",
-                    "placeholder": ""
+                    "name": "_r_1e_"
                 },
                 {
                     "label": "Mã số DKKD",
-                    "name": "businessRegistrationNumber",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "businessRegistrationNumber"
                 },
                 {
                     "label": "Ngày cấp",
-                    "name": "businessRegistrationDate",
-                    "type": "text",
-                    "placeholder": "DD/MM/YYYY"
+                    "name": "businessRegistrationDate"
                 },
                 {
                     "label": "Nơi cấp",
-                    "name": "businessRegistrationIssuePlace",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "businessRegistrationIssuePlace"
                 },
                 {
                     "label": "Người đại diện pháp luật",
-                    "name": "legalRepresentative",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "legalRepresentative"
                 },
                 {
                     "label": "chức danh",
-                    "name": "legalRepresentativePosition",
-                    "type": "text",
-                    "placeholder": ""
+                    "name": "legalRepresentativePosition"
                 }
             ],
-            "tables": []
+            "row_actions_hidden": [],
+            "create_form_fields": []
         }
     },
     "Hệ thống_Chi nhánh": {
         "url": "https://giaiphapvang.net/company/branch/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã chi nhánh",
+                        "Tên chi nhánh",
+                        "Số điện thoại",
+                        "Địa chỉ",
+                        "Email",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã chi nhánh",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên chi nhánh",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Email",
+                    "name": "email",
+                    "type": "text"
+                },
+                {
+                    "label": "Số điện thoại",
+                    "name": "phoneNumber",
+                    "type": "text"
+                },
+                {
+                    "label": "Địa chỉ",
+                    "name": "address",
+                    "type": "text"
+                }
+            ]
         }
     },
     "Hệ thống_Phòng ban": {
         "url": "https://giaiphapvang.net/company/department/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã phòng ban",
+                        "Tên phòng ban",
+                        "Chi nhánh",
+                        "Trưởng BP/Phòng ban",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã phòng ban",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên phòng ban",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Chi nhánh",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Trưởng phòng",
+                    "name": "headOfDepartmentId",
+                    "type": "text"
+                }
+            ]
         }
     },
     "Hệ thống_Chức danh": {
         "url": "https://giaiphapvang.net/company/job-title/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã chức danh",
+                        "Tên chức danh",
+                        "Phòng ban",
+                        "Chi nhánh",
+                        "Thứ tự ưu tiên",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã chức danh",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên chức danh",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Chi nhánh",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Phòng ban",
+                    "name": "departmentId",
+                    "type": "text"
+                },
+                {
+                    "label": "Thứ tự ưu tiên",
+                    "name": "priorityOrder",
+                    "type": "text"
+                }
+            ]
         }
     },
     "Hệ thống_Nhân viên": {
         "url": "https://giaiphapvang.net/company/employee/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã nhân viên",
+                        "Họ và tên",
+                        "Giới tính",
+                        "Ngày sinh",
+                        "CCCD",
+                        "SĐT",
+                        "Địa chỉ"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã nhân viên",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Họ và tên",
+                    "name": "fullName",
+                    "type": "text"
+                },
+                {
+                    "label": "Giới tính",
+                    "name": "gender",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngày sinh",
+                    "name": "dateOfBirth",
+                    "type": "text"
+                },
+                {
+                    "label": "CCCD",
+                    "name": "identityId",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngày cấp CCCD",
+                    "name": "issueDate",
+                    "type": "text"
+                },
+                {
+                    "label": "Số điện thoại",
+                    "name": "phoneNumber",
+                    "type": "text"
+                },
+                {
+                    "label": "Email",
+                    "name": "email",
+                    "type": "text"
+                },
+                {
+                    "label": "Địa chỉ",
+                    "name": "address",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Địa chỉ",
+                    "name": "",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Chi nhánh",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Phòng ban",
+                    "name": "departmentId",
+                    "type": "text"
+                },
+                {
+                    "label": "Chức danh",
+                    "name": "positionId",
+                    "type": "text"
+                },
+                {
+                    "label": "Ghi chú",
+                    "name": "note",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Ghi chú",
+                    "name": "",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Ngày bắt đầu làm việc",
+                    "name": "startDate",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngày làm việc cuối cùng",
+                    "name": "endDate",
+                    "type": "text"
+                },
+                {
+                    "label": "Thứ tự ưu tiên",
+                    "name": "priorityOrder",
+                    "type": "text"
+                },
+                {
+                    "label": "Trình độ",
+                    "name": "degree",
+                    "type": "text"
+                },
+                {
+                    "label": "Chuyên ngành",
+                    "name": "major",
+                    "type": "text"
+                },
+                {
+                    "label": "Nơi đào tạo",
+                    "name": "trainingPlace",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngày cấp",
+                    "name": "graduationDate",
+                    "type": "text"
+                },
+                {
+                    "label": "Công việc",
+                    "name": "rhf-autocomplete-jobs",
+                    "type": "text"
+                },
+                {
+                    "label": "Tài khoản đăng nhập",
+                    "name": "userId",
+                    "type": "text"
+                },
+                {
+                    "label": "Nhóm người dùng",
+                    "name": "rhf-autocomplete-userGroups",
+                    "type": "text"
+                }
+            ]
         }
     },
     "Hệ thống_Khu vực": {
         "url": "https://giaiphapvang.net/company/area/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã khu vực",
+                        "Tên khu vực",
+                        "Chi nhánh",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã khu vực",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên khu vực",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Chi nhánh",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Loại vàng": {
         "url": "https://giaiphapvang.net/category/product-category/gold-type/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã loại vàng",
+                        "Tên loại vàng",
+                        "Nhóm vàng",
+                        "Hàm lượng vàng",
+                        "Đơn vị tính",
+                        "Loại vàng cha",
+                        "Tính theo Tổng TL",
+                        "Hiển thị bảng giá PM",
+                        "STT trên bảng giá PM",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Chi tiết",
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": []
         }
     },
     "Hệ thống_Loại vàng quy": {
         "url": "https://giaiphapvang.net/category/product-category/gold-reference-purity/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã vàng quy",
+                        "Tên loại vàng quy",
+                        "Tuổi quy",
+                        "Đơn vị tính",
+                        "Mô tả",
+                        "Quy chuẩn",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Ngưng sử dụng",
+                "Sửa",
+                "Xóa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Tên loại vàng quy",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Tuổi quy",
+                    "name": "referencePurity",
+                    "type": "text"
+                },
+                {
+                    "label": "Đơn vị tính",
+                    "name": "unitCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Quầy vàng": {
         "url": "https://giaiphapvang.net/category/product-category/gold-counter/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã quầy vàng",
+                        "Tên quầy vàng",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã Quầy vàng",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên Quầy vàng",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Quầy hàng": {
         "url": "https://giaiphapvang.net/category/product-category/counter/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã quầy hàng",
+                        "Tên quầy hàng",
+                        "Loại vàng",
+                        "Quầy vàng",
+                        "Loại quầy hàng",
+                        "ĐVT Xuất HDDT",
+                        "Mô tả"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Mã quầy hàng",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên quầy hàng",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại vàng",
+                    "name": "goldTypeId",
+                    "type": "text"
+                },
+                {
+                    "label": "Quầy vàng",
+                    "name": "goldCounterId",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại quầy hàng",
+                    "name": "counterType",
+                    "type": "text"
+                },
+                {
+                    "label": "ĐVT xuất HĐĐT",
+                    "name": "unitCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Nhóm hàng": {
         "url": "https://giaiphapvang.net/category/product-category/product-group/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã nhóm hàng",
+                        "Tên nhóm hàng",
+                        "Quầy vàng",
+                        "Quầy hàng",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã nhóm hàng",
+                    "name": "code",
+                    "type": "text"
                 },
                 {
-                    "label": "N/A",
+                    "label": "Tên nhóm hàng",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Quầy vàng",
+                    "name": "goldCounterCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Quầy hàng",
+                    "name": "counterCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
                     "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "textarea"
                 }
-            ],
-            "tables": []
+            ]
         }
     },
     "Hệ thống_Tem": {
         "url": "https://giaiphapvang.net/category/product-category/label/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã tem",
+                        "Tên tem",
+                        "Kích thước (DxRmm)",
+                        "Trọng lượng tem (ly)",
+                        "Trọng lượng tem (Chỉ)",
+                        "Trọng lượng tem (Gram)",
+                        "Ngày áp dụng",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã tem",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên tem",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Chiều dài tem (mm)",
+                    "name": "lengthMm",
+                    "type": "text"
+                },
+                {
+                    "label": "Chiều rộng tem (mm)",
+                    "name": "widthMm",
+                    "type": "text"
+                },
+                {
+                    "label": "Kích thước (DxRmm)",
+                    "name": "size",
+                    "type": "text"
+                },
+                {
+                    "label": "Trọng lượng tem (ly)",
+                    "name": "weightLy",
+                    "type": "text"
+                },
+                {
+                    "label": "Trọng lượng tem (chỉ)",
+                    "name": "weightChi",
+                    "type": "text"
+                },
+                {
+                    "label": "Trọng lượng tem (gram)",
+                    "name": "weightGram",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngày áp dụng",
+                    "name": "effectiveDate",
+                    "type": "text"
+                }
+            ]
         }
     },
     "Hệ thống_Nhóm vàng cắt ni": {
         "url": "https://giaiphapvang.net/category/product-category/cut-gold-group/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Vàng mới",
+                        "Vàng nguyên liệu",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Vàng mới",
+                    "name": "newGold",
+                    "type": "text"
+                },
+                {
+                    "label": "Vàng nguyên liệu",
+                    "name": "rawGold",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Loại hàng NCC": {
         "url": "https://giaiphapvang.net/category/product-category/supplier-product-type/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã",
+                        "Tên loại hàng",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã Loại hàng NCC",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên loại hàng NCC",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Loại hàng cầm đồ": {
         "url": "https://giaiphapvang.net/category/product-category/pawn-product-type/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã",
+                        "Tên loại",
+                        "Thứ tự ưu tiên",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã loại hàng cầm đồ",
+                    "name": "code",
+                    "type": "text"
                 },
                 {
-                    "label": "N/A",
+                    "label": "Thứ tự ưu tiên",
+                    "name": "priorityOrder",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên loại hàng cầm đồ",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
                     "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "textarea"
                 }
-            ],
-            "tables": []
+            ]
         }
     },
     "Hệ thống_Kho hàng": {
         "url": "https://giaiphapvang.net/category/warehouse-category/warehouse/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã kho",
+                        "Tên kho",
+                        "Loại kho",
+                        "Chi nhánh",
+                        "Khu vực",
+                        "Cho phép mua bán",
+                        "Diễn giải"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Mã kho",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên kho",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại kho",
+                    "name": "warehouseType",
+                    "type": "text"
+                },
+                {
+                    "label": "Chi nhánh",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Khu vực",
+                    "name": "areaId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Loại xuất kho": {
         "url": "https://giaiphapvang.net/category/warehouse-category/export-type/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã xuất kho",
+                        "Tên xuất kho",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã loại xuất kho",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên loại xuất kho",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Nhóm dịch vụ": {
         "url": "https://giaiphapvang.net/category/material-service-category/service-group/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã nhóm dịch vụ",
+                        "Tên nhóm dịch vụ",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã nhóm dịch vụ",
+                    "name": "code",
+                    "type": "text"
                 },
                 {
-                    "label": "N/A",
+                    "label": "Tên nhóm dịch vụ",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
                     "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "textarea"
                 }
-            ],
-            "tables": []
+            ]
         }
     },
     "Hệ thống_Dịch vụ": {
         "url": "https://giaiphapvang.net/category/material-service-category/service/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
                 {
-                    "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "table-pagination-select",
-                    "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã dịch vụ",
+                        "Tên dịch vụ",
+                        "Nhóm dịch vụ",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
                 }
             ],
-            "tables": []
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã dịch vụ",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên dịch vụ",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Nhóm dịch vụ",
+                    "name": "serviceGroupId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
         }
     },
     "Hệ thống_Nhóm sản phẩm/kích cỡ": {
         "url": "https://giaiphapvang.net/category/material-service-category/product-size-group/",
         "structure": {
-            "buttons": [
+            "page_actions": [
                 {
-                    "text": "Tạo mới",
-                    "id": "",
-                    "is_submit": false
-                },
-                {
-                    "text": "Cột",
-                    "id": "_r_r_",
-                    "is_submit": false
-                },
-                {
-                    "text": "0",
-                    "id": "_r_v_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Mật độ",
-                    "id": "_r_13_",
-                    "is_submit": false
-                },
-                {
-                    "text": "Xuất",
-                    "id": "_r_17_",
-                    "is_submit": false
+                    "text": "Tạo mới"
                 }
             ],
-            "inputs": [
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã nhóm sản phẩm",
+                        "Tên nhóm sản phẩm",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã nhóm sản phẩm",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên nhóm sản phẩm",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Nhóm vật tư": {
+        "url": "https://giaiphapvang.net/category/material-service-category/material-group/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã nhóm vật tư",
+                        "Tên nhóm vật tư",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã nhóm vật tư",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên nhóm vật tư",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Vật tư": {
+        "url": "https://giaiphapvang.net/category/material-service-category/material/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã vật tư",
+                        "Tên vật tư",
+                        "Nhóm vật tư",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã vật tư",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên vật tư",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Nhóm vật tư",
+                    "name": "materialGroupId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Đơn vị tính": {
+        "url": "https://giaiphapvang.net/category/material-service-category/category-unit/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã ĐVT",
+                        "Tên ĐVT",
+                        "ĐVT quy đổi",
+                        "Tỷ lệ quy đổi",
+                        "ĐVT xuất HĐĐT",
+                        "Mặc định",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã đơn vị tính",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên đơn vị tính",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Đơn vị quy đổi",
+                    "name": "_r_3v_",
+                    "type": "text"
+                },
+                {
+                    "label": "Tỷ lệ quy đổi",
+                    "name": "_r_42_",
+                    "type": "number"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Hạng khách hàng": {
+        "url": "https://giaiphapvang.net/category/partner-customer-category/customer-rank/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Tên hạng KH",
+                        "Số điểm từ",
+                        "Số điểm đến",
+                        "Thứ tự ưu tiên",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã hạng KH",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên hạng KH",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Số điểm từ",
+                    "name": "pointFrom",
+                    "type": "text"
+                },
+                {
+                    "label": "Số điểm đến",
+                    "name": "pointTo",
+                    "type": "text"
+                },
+                {
+                    "label": "Thứ tự ưu tiên",
+                    "name": "priorityOrder",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Quầy thu ngân": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/cashier-counter/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã quầy thu ngân",
+                        "Tên quầy thu ngân",
+                        "Chi nhánh",
+                        "Khu vực",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã quầy thu ngân",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên quầy thu ngân",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Chi nhánh",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Khu vực",
+                    "name": "areaId",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Ngân hàng": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/bank/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã ngân hàng",
+                        "Tên ngân hàng",
+                        "Tên viết tắt",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã ngân hàng",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên ngân hàng",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên viết tắt",
+                    "name": "shortName",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Chi nhánh ngân hàng": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/bank-branch/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã chi nhánh",
+                        "Tên chi nhánh",
+                        "Ngân hàng",
+                        "Địa chỉ",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã chi nhánh",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên chi nhánh",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngân hàng",
+                    "name": "bankId",
+                    "type": "text"
+                },
+                {
+                    "label": "Địa chỉ",
+                    "name": "address",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Địa chỉ",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Tài khoản thanh toán": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/payment-account/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Số tài khoản",
+                        "Chủ tài khoản",
+                        "Ngân hàng",
+                        "Chi nhánh ngân hàng",
+                        "Loại tài khoản",
+                        "Chi nhánh công ty",
+                        "Khu vực"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": []
+        }
+    },
+    "Hệ thống_Hệ thống tài khoản": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/account-system/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Số tài khoản",
+                        "Tên tài khoản",
+                        "Tên tiếng Anh",
+                        "Tính chất",
+                        "Tài khoản tổng hợp",
+                        "Mô tả"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Số tài khoản",
+                    "name": "accountNumber",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên tài khoản",
+                    "name": "accountName",
+                    "type": "text"
+                },
+                {
+                    "label": "Tính chất",
+                    "name": "nature",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên tiếng Anh",
+                    "name": "englishName",
+                    "type": "text"
+                },
+                {
+                    "label": "Tài khoản tổng hợp",
+                    "name": "parentAccountId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Loại thẻ": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/card-type/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã loại thẻ",
+                        "Tên loại thẻ",
+                        "Thứ tự ưu tiên",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã loại thẻ",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Thứ tự ưu tiên",
+                    "name": "priorityOrder",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên loại thẻ",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Biểu phí quẹt thẻ": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/card-fee/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã biểu phí",
+                        "Chi nhánh",
+                        "Ngân hàng",
+                        "Số tài khoản",
+                        "Loại thực hiện",
+                        "Loại giao dịch",
+                        "Loại thẻ"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Mã biểu phí",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Chi nhánh công ty",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngân hàng",
+                    "name": "bankId",
+                    "type": "text"
+                },
+                {
+                    "label": "Số tài khoản",
+                    "name": "paymentAccountId",
+                    "type": "text"
+                },
+                {
+                    "label": "Chủ tài khoản",
+                    "name": "paymentAccountOwner",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại giao dịch",
+                    "name": "transactionType",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại thực hiện",
+                    "name": "executionType",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại thẻ",
+                    "name": "cardTypeCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Phí ngân hàng",
+                    "name": "bankFee",
+                    "type": "text"
+                },
+                {
+                    "label": "Phí tính khách",
+                    "name": "customerFee",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Nguồn vốn": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/capital-source/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã nguồn vốn",
+                        "Tên nguồn vốn",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Mã nguồn vốn",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên nguồn vốn",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Vốn vay": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/capital-loan/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã vốn vay",
+                        "Tên vốn vay",
+                        "Ngân hàng",
+                        "Lãi suất (%)",
+                        "Tài khoản vay",
+                        "Thời hạn (tháng)",
+                        "Mô tả"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Mã vốn vay",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên vốn vay",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Ngân hàng",
+                    "name": "bankId",
+                    "type": "text"
+                },
+                {
+                    "label": "Lãi suất (%)",
+                    "name": "interestRatePercent",
+                    "type": "text"
+                },
+                {
+                    "label": "Tài khoản vay",
+                    "name": "loanAccount",
+                    "type": "text"
+                },
+                {
+                    "label": "Thời hạn (tháng)",
+                    "name": "termMonths",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Ngoại tệ": {
+        "url": "https://giaiphapvang.net/category/finance-bank-category/foreign-currency/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã",
+                        "Tên ngoại tệ",
+                        "Ký hiệu",
+                        "Mệnh giá chuẩn",
+                        "Tỷ giá nhỏ nhất",
+                        "Tỷ giá lớn nhất",
+                        "Số ký tự đơn giá",
+                        "Số thứ tự ưu tiên",
+                        "Sửa giá khi giao dịch"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Mã ngoại tệ",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên ngoại tệ",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Ký hiệu",
+                    "name": "symbol",
+                    "type": "text"
+                },
+                {
+                    "label": "Mệnh giá chuẩn",
+                    "name": "standardDenomination",
+                    "type": "text"
+                },
+                {
+                    "label": "Tỷ giá nhỏ nhất",
+                    "name": "minExchangeRate",
+                    "type": "text"
+                },
+                {
+                    "label": "Tỷ giá lớn nhất",
+                    "name": "maxExchangeRate",
+                    "type": "text"
+                },
+                {
+                    "label": "Số ký tự đơn giá nguyên (bảng giá)",
+                    "name": "unitPriceDigits",
+                    "type": "text"
+                },
+                {
+                    "label": "Số thứ tự ưu tiên",
+                    "name": "priorityOrder",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Quốc gia": {
+        "url": "https://giaiphapvang.net/category/address-category/country/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                },
+                {
+                    "text": "Tải lên"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã quốc gia",
+                        "Tên quốc gia",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Mã quốc gia",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên quốc gia",
+                    "name": "name",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Tỉnh/Thành phố": {
+        "url": "https://giaiphapvang.net/category/address-category/province/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                },
+                {
+                    "text": "Tải lên"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã tỉnh/thành phố",
+                        "Tên tỉnh/thành phố",
+                        "Quốc gia",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Quốc gia",
+                    "name": "countryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mã tỉnh/thành phố",
+                    "name": "provinceCode",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên tỉnh/thành phố",
+                    "name": "provinceName",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Quận/Huyện": {
+        "url": "https://giaiphapvang.net/category/address-category/district/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                },
+                {
+                    "text": "Tải lên"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã quận/huyện",
+                        "Tên quận/huyện",
+                        "Tỉnh/Thành phố",
+                        "Quốc gia",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Quốc gia",
+                    "name": "countryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Tỉnh/Thành phố",
+                    "name": "provinceId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mã quận/huyện",
+                    "name": "districtCode",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên quận/huyện",
+                    "name": "districtName",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Phường/Xã": {
+        "url": "https://giaiphapvang.net/category/address-category/ward/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                },
+                {
+                    "text": "Tải lên"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã phường/xã",
+                        "Tên phường/xã",
+                        "Tên Quận/Huyện",
+                        "Tên Tỉnh/Thành phố",
+                        "Tên Quốc gia",
+                        "Mới/Cũ",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Quốc gia",
+                    "name": "countryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Tỉnh/Thành phố",
+                    "name": "provinceId",
+                    "type": "text"
+                },
+                {
+                    "label": "Quận/Huyện",
+                    "name": "districtId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mã phường/xã",
+                    "name": "wardCode",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên phường/xã",
+                    "name": "wardName",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Tỷ lệ hao hụt": {
+        "url": "https://giaiphapvang.net/settings/import-and-price-settings/loss-rate/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã tỷ lệ hao hụt",
+                        "Loại vàng",
+                        "Loại gia công",
+                        "Tỷ lệ hao hụt (%)",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Loại vàng",
+                    "name": "goldTypeCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại gia công",
+                    "name": "typeOfProcessing",
+                    "type": "text"
+                },
+                {
+                    "label": "Tỷ lệ hao hụt (%)",
+                    "name": "lossRateValue",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Cấu hình quy đổi tính giá vốn": {
+        "url": "https://giaiphapvang.net/settings/import-and-price-settings/cost-conversion/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Mã tỷ lệ tỷ giá vốn",
+                        "Loại vàng",
+                        "Loại vàng quy đổi",
+                        "Tỷ lệ quy đổi",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Loại vàng",
+                    "name": "fromGoldTypeCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "Đơn vị tính",
+                    "name": "fromUnitCategoryName",
+                    "type": "text"
+                },
+                {
+                    "label": "Loại vàng quy đổi",
+                    "name": "toGoldTypeCategoryId",
+                    "type": "text"
+                },
+                {
+                    "label": "ĐVT quy đổi",
+                    "name": "toUnitCategoryName",
+                    "type": "text"
+                },
+                {
+                    "label": "Tỷ lệ quy đổi",
+                    "name": "conversionRate",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Chính sách thu đổi": {
+        "url": "https://giaiphapvang.net/settings/import-and-price-settings/gold-conversion/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Vàng mới",
+                        "Vàng cũ",
+                        "Đổi ngang bù tiền",
+                        "Chênh lệch giá",
+                        "Thứ tự ưu tiên",
+                        "Căn cứ tính giá đổi"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": [
+                {
+                    "label": "Vàng mới",
+                    "name": "newGoldId",
+                    "type": "text"
+                },
+                {
+                    "label": "Vàng cũ",
+                    "name": "materialGoldId",
+                    "type": "text"
+                },
+                {
+                    "label": "Căn cứ tính giá đổi",
+                    "name": "priceCalculationBasis",
+                    "type": "text"
+                },
+                {
+                    "label": "Đổi ngang bù tiền",
+                    "name": "compensationPrice",
+                    "type": "text"
+                },
+                {
+                    "label": "Chênh lệch giá",
+                    "name": "priceDifference",
+                    "type": "text"
+                },
+                {
+                    "label": "Thứ tự ưu tiên",
+                    "name": "priorityOrder",
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Nhân viên theo quầy thu ngân": {
+        "url": "https://giaiphapvang.net/settings/warehouse-and-cashier/cashier-counter-employee/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Chi nhánh",
+                        "Quầy thu ngân",
+                        "Khu vực",
+                        "Tổng số nhân viên",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Chi nhánh",
+                    "name": "branchId",
+                    "type": "text"
+                },
+                {
+                    "label": "Quầy thu ngân",
+                    "name": "id",
+                    "type": "text"
+                },
+                {
+                    "label": "Khu vực",
+                    "name": "area",
+                    "type": "text"
+                },
+                {
+                    "label": "Tổng số nhân viên",
+                    "name": "numberOfEmployees",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                },
                 {
                     "label": "Tìm kiếm…",
-                    "name": "_r_p_",
-                    "type": "search",
-                    "placeholder": "Tìm kiếm…"
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
-                },
-                {
-                    "label": "N/A",
-                    "name": "",
-                    "type": "checkbox",
-                    "placeholder": ""
+                    "name": "_r_3g_",
+                    "type": "search"
                 },
                 {
                     "label": "table-pagination-select",
                     "name": "table-pagination-select",
-                    "type": "text",
-                    "placeholder": ""
+                    "type": "text"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Cấu hình hệ thống": {
+        "url": "https://giaiphapvang.net/settings/system-settings/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Chỉnh sửa"
                 }
             ],
-            "tables": []
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [],
+            "inputs": [
+                {
+                    "label": "Ngôn ngữ mặc định",
+                    "name": "_r_o_"
+                },
+                {
+                    "label": "Múi giờ hệ thống",
+                    "name": "_r_p_"
+                },
+                {
+                    "label": "Định dạng ngày",
+                    "name": "_r_q_"
+                },
+                {
+                    "label": "Định dạng số",
+                    "name": "_r_r_"
+                },
+                {
+                    "label": "Đơn vị trọng lượng (mặc định)",
+                    "name": "_r_s_"
+                },
+                {
+                    "label": "Đơn vị tiền tệ",
+                    "name": "_r_t_"
+                },
+                {
+                    "label": "Số thập phân trọng lượng",
+                    "name": "_r_u_"
+                },
+                {
+                    "label": "Số thập phân giá trị tiền",
+                    "name": "_r_v_"
+                },
+                {
+                    "label": "Quy tắc làm tròn lượng",
+                    "name": "_r_10_"
+                },
+                {
+                    "label": "Quy tắc làm tròn số tiền",
+                    "name": "_r_11_"
+                },
+                {
+                    "label": "Push Notification",
+                    "name": "_r_12_"
+                },
+                {
+                    "label": "Thời gian tự động đăng xuất (phút)",
+                    "name": "_r_13_"
+                },
+                {
+                    "label": "Chu kỳ backup dữ liệu",
+                    "name": "_r_14_"
+                }
+            ],
+            "row_actions_hidden": [],
+            "create_form_fields": []
+        }
+    },
+    "Hệ thống_Cấu hình quy trình duyệt": {
+        "url": "https://giaiphapvang.net/settings/approval-process-settings/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Đề xuất vật tư"
+                },
+                {
+                    "text": "Phiếu giao thợ sửa chữa"
+                },
+                {
+                    "text": "Phiếu giao thợ tân trang"
+                },
+                {
+                    "text": "Nhà cung cấp"
+                },
+                {
+                    "text": "Phiếu nhận tân trang từ thợ"
+                },
+                {
+                    "text": "Phiếu nhập kho"
+                },
+                {
+                    "text": "Phiếu nhập vàng nguyên liệu"
+                },
+                {
+                    "text": "Toa hàng nhà cung cấp"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Bước",
+                        "Bước duyệt",
+                        "Hành động",
+                        "Nhóm người dùng"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Phân quyền"
+            ],
+            "create_form_fields": []
+        }
+    },
+    "Hệ thống_Ứng dụng": {
+        "url": "https://giaiphapvang.net/administrator/application/",
+        "structure": {
+            "page_actions": [],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": []
+        }
+    },
+    "Hệ thống_Nhóm người dùng": {
+        "url": "https://giaiphapvang.net/administrator/user-group/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Tên nhóm",
+                        "Mô tả",
+                        "Trạng thái",
+                        "Số lượng người dùng"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Xóa",
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Tên nhóm",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả nhóm",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả nhóm",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Người dùng": {
+        "url": "https://giaiphapvang.net/administrator/user/",
+        "structure": {
+            "page_actions": [
+                {
+                    "text": "Tạo mới"
+                }
+            ],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [
+                {
+                    "type": "DataGrid",
+                    "columns": [
+                        "Tên người dùng",
+                        "Tên đăng nhập",
+                        "Nhóm người dùng",
+                        "Vai trò",
+                        "Mô tả",
+                        "Trạng thái"
+                    ],
+                    "toolbar_actions": [
+                        "Cột",
+                        "Mật độ",
+                        "Xuất"
+                    ]
+                }
+            ],
+            "inputs": [],
+            "row_actions_hidden": [
+                "Ngưng sử dụng",
+                "Chỉnh sửa"
+            ],
+            "create_form_fields": [
+                {
+                    "label": "Mã người dùng",
+                    "name": "code",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên người dùng",
+                    "name": "name",
+                    "type": "text"
+                },
+                {
+                    "label": "Tên đăng nhập (Email)",
+                    "name": "username",
+                    "type": "text"
+                },
+                {
+                    "label": "Mật khẩu",
+                    "name": "password",
+                    "type": "password"
+                },
+                {
+                    "label": "Nhập lại mật khẩu",
+                    "name": "confirmPassword",
+                    "type": "password"
+                },
+                {
+                    "label": "Nhóm người dùng",
+                    "name": "rhf-autocomplete-userGroupIds",
+                    "type": "text"
+                },
+                {
+                    "label": "Vai trò",
+                    "name": "roleId",
+                    "type": "text"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "description",
+                    "type": "textarea"
+                },
+                {
+                    "label": "Mô tả",
+                    "name": "",
+                    "type": "textarea"
+                }
+            ]
+        }
+    },
+    "Hệ thống_Phân quyền": {
+        "url": "https://giaiphapvang.net/administrator/permission/",
+        "structure": {
+            "page_actions": [],
+            "navigation_tabs": [
+                "Thông tin công ty",
+                "Danh mục sản phẩm",
+                "Danh mục kho",
+                "Danh mục vật tư, hàng hóa, dịch vụ",
+                "Danh mục đối tác, khách hàng",
+                "Danh mục ngân hàng, tài chính",
+                "Danh mục địa chỉ",
+                "Nhập hàng & Giá vốn",
+                "Kho & Quầy thu ngân"
+            ],
+            "tables": [],
+            "inputs": [],
+            "row_actions_hidden": [],
+            "create_form_fields": []
         }
     }
 }

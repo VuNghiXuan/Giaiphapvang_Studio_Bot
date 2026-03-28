@@ -193,3 +193,20 @@ class StudioController:
         except Exception as e:
             print(f"❌ Lỗi delete_sub_content: {e}")
             return False
+        
+    # -------------Thêm hàm cho Bot update dự án giaiphapvang ----------------
+    def update_sub_content(self, sub_id, new_title, new_status):
+        """
+        Cập nhật tiêu đề và trạng thái (Chưa quay, Đã quay...) cho bài học.
+        Giữ nguyên logic commit của hệ thống.
+        """
+        try:
+            self.db.execute(
+                "UPDATE sub_contents SET sub_title = ?, status = ? WHERE id = ?", 
+                (new_title, new_status, sub_id)
+            )
+            self.db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Lỗi update_sub_content: {e}")
+            return False

@@ -1,209 +1,137 @@
 import streamlit as st
 import os
-import json
-import asyncio
 from config import Config
-from core.scrape_giaiphapvang import StructureExtractor
+# Import các hàm xử lý logic và giao diện từ sub-folder
+# Đảm bảo đường dẫn .utils_dashboad là chính xác theo folder của ông
+from .utils_dashboad.gpv_handler import render_gpv_logic, render_gpv_forms, render_item_rows
 
-# --- CẤU HÌNH GIAO DIỆN ---
-st.set_page_config(page_title="GPV AI Studio", layout="wide")
+# --- 1. HÀM RENDER CHO DỰ ÁN THƯỜNG ---
+def render_normal_logic(ctrl, p):
+    """Giao diện danh sách phẳng cho các dự án không phải GPV"""
+    with st.container(border=True):
+        st.subheader("📝 Quản lý bài học")
+        col_in, col_btn = st.columns([3, 1])
+        
+        # Key độc nhất dựa trên ID dự án để tránh xung đột widget
+        sub_n = col_in.text_input("Tên bài học mới:", placeholder="Nhập tên bài học...", key=f"input_add_{p['id']}")
+        
+        if col_btn.button("➕ THÊM BÀI", use_container_width=True, type="primary"):
+            if sub_n: 
+                ctrl.add_sub_content(p['id'], sub_n, p['folder_name'])
+                st.rerun()
+            else:
+                st.error("Vũ ơi, nhập tên bài đã chứ!")
 
-def get_status_info(sub_path, manual_status=None):
-    """Kiểm tra trạng thái thực tế của Form dựa trên file vật lý"""
-    status_list = ["Chưa quay", "Đã quay", "Hoàn chỉnh"]
-    if manual_status in status_list: return manual_status
+    st.divider()
     
-    raw_file = os.path.join(sub_path, "raw", "raw_video.mp4")
-    output_dir = os.path.join(sub_path, "outputs")
+    # Lấy danh sách bài học từ DB
+    display_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
     
-    has_output = os.path.exists(output_dir) and any(f.endswith('.mp4') for f in os.listdir(output_dir))
-    
-    if has_output: return "Hoàn chỉnh"
-    if os.path.exists(raw_file): return "Đã quay"
-    return "Chưa quay"
+    if not display_subs:
+        st.info("Dự án này chưa có bài học nào. Hãy thêm ở trên 👆")
+    else:
+        # Gọi hàm vẽ từng dòng video (🎥, 🤖, ⚙️) từ gpv_handler.py
+        render_item_rows(ctrl, p, display_subs)
 
-def load_knowledge_data():
-    """Tải cấu trúc từ file JSON (kết quả Scraper)"""
-    path = os.path.abspath(os.path.join(os.getcwd(), "knowledge_source.json"))
-    if os.path.exists(path):
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception as e: 
-            print(f"❌ JSON ERROR: {e}")
-            return {}
-    return {}
 
+# --- 2. HÀM CHÍNH ĐIỀU HƯỚNG DASHBOARD ---
 def render_dashboard(ctrl):
-    # --- 1. KHỞI TẠO SESSION STATE ---
+    # Khởi tạo session state nếu chưa có
     if "selected_project_title" not in st.session_state: 
         st.session_state.selected_project_title = "-- Chọn dự án --"
     if "current_modul" not in st.session_state: 
         st.session_state.current_modul = "🏠 TẤT CẢ MODULS"
 
+    # --- SIDEBAR ---
     with st.sidebar:
         st.markdown("### 🚀 Studio Control")
         if st.button("🔄 LÀM MỚI", use_container_width=True): 
             st.rerun()
-            
-        if st.session_state.get('view') == "studio":
-            if st.button("⬅️ THOÁT STUDIO", use_container_width=True, type="primary"):
-                st.session_state.view = "dashboard"
-                st.rerun()
-        
         st.divider()
         st.caption(f"📍 Storage: {Config.BASE_STORAGE}")
 
     st.title("🚀 QUẢN LÝ VIDEO NGHIỆP VỤ")
 
-    # --- 2. QUẢN LÝ DỰ ÁN (PROJECTS) ---
-    all_projs_raw = ctrl.get_all_tutorials()
-    if not all_projs_raw:
-        ctrl.create_tutorial("Phần mềm Giải Pháp Vàng")
-        st.rerun()
+    # --- 1. CHUẨN BỊ DANH SÁCH DỰ ÁN ---
+    db_projects = [dict(p) for p in ctrl.get_all_tutorials()]
+    db_titles = [p['title'] for p in db_projects]
+    
+    GPV_NAME = "Giải Pháp Vàng"
+    NEW_PROJ_PLACEHOLDER = "➕ Khởi tạo dự án mới..."
+    
+    # Xây dựng danh sách options cho selectbox
+    display_options = ["-- Chọn dự án --"] + db_titles
+    
+    # Thêm option "mồi" cho Giải Pháp Vàng nếu trong DB chưa có
+    if GPV_NAME not in db_titles:
+        display_options.append(GPV_NAME)
+    
+    # Luôn thêm option tạo dự án mới
+    display_options.append(NEW_PROJ_PLACEHOLDER)
 
-    projects = [dict(p) for p in all_projs_raw]
-    project_titles = [p['title'] for p in projects]
-    
-    col_p, col_add = st.columns([3, 1])
-    
+    # --- FIX LỖI RESET ID CHỌN DỰ ÁN ---
+    # Tìm vị trí của dự án đang chọn trong danh sách mới để giữ trạng thái selectbox
     try:
-        p_idx = project_titles.index(st.session_state.selected_project_title) + 1
-    except:
-        p_idx = 0
+        current_index = display_options.index(st.session_state.selected_project_title)
+    except (ValueError, KeyError):
+        current_index = 0
 
-    selected_p_title = col_p.selectbox("📂 CHỌN DỰ ÁN:", ["-- Chọn dự án --"] + project_titles, index=p_idx)
+    selected_p_title = st.selectbox(
+        "📂 CHỌN DỰ ÁN:", 
+        options=display_options, 
+        index=current_index
+    )
 
-    with col_add.popover("➕ Dự án mới"):
-        new_p_name = st.text_input("Tên dự án mới:")
-        if st.button("TẠO NGAY", use_container_width=True):
-            if new_p_name and ctrl.create_tutorial(new_p_name):
-                st.rerun()
+    # Cập nhật session state ngay khi chọn
+    st.session_state.selected_project_title = selected_p_title
 
     if selected_p_title == "-- Chọn dự án --":
-        st.session_state.selected_project_title = "-- Chọn dự án --"
-        st.info("💡 Vũ ơi, chọn một dự án để bắt đầu quản lý các Moduls nhé!")
+        st.info("💡 Vũ ơi, chọn dự án có sẵn hoặc tạo mới để bắt đầu nhé!")
         return
 
-    st.session_state.selected_project_title = selected_p_title
-    p = next(proj for proj in projects if proj['title'] == selected_p_title)
-    is_gpv = any(kw in p['title'].lower() for kw in ["giải pháp vàng", "giaiphapvang", "gpv"])
+    # --- 2. XỬ LÝ LOGIC THEO LỰA CHỌN ---
 
-    # --- 3. ĐỒNG BỘ CẤU TRÚC (CHO GPV) ---
-    if is_gpv:
-        with st.expander("⚙️ ĐỒNG BỘ MODULS & FORMS TỪ GIAIPHAPVANG.NET", expanded=True):
-            st.info("Bot sẽ quét các Form con nằm trong các Modul từ trang Dashboard.")
-            if st.button("🔍 BẮT ĐẦU QUÉT & CẬP NHẬT", type="primary", use_container_width=True):
-                with st.spinner("🤖 Bot đang bóc tách cấu trúc..."):
-                    try:
-                        extractor = StructureExtractor(output_file="knowledge_source.json")
-                        asyncio.run(extractor.run())
-                        
-                        data = load_knowledge_data()
-                        current_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
-                        added_count = 0
-                        
-                        for form_name, info in data.items():
-                            modul = info.get('module', 'Nghiệp vụ')
-                            full_title = f"{modul}|{form_name}"
-                            if not any(s['sub_title'] == full_title for s in current_subs):
-                                ctrl.add_sub_content(p['id'], full_title, p['folder_name'])
-                                added_count += 1
-                        
-                        st.success(f"✅ Xong! Đã thêm mới {added_count} Forms vào các Moduls.")
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"Lỗi Scraper: {e}")
-
-    # --- 4. HIỂN THỊ DANH SÁCH MODULS ---
-    db_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
-    moduls = sorted(list(set([s['sub_title'].split('|')[0] for s in db_subs if '|' in s['sub_title']])))
-    if not moduls: moduls = ["Chưa phân loại"]
-
-    all_options = ["🏠 TẤT CẢ MODULS"] + moduls
-    m_idx = all_options.index(st.session_state.current_modul) if st.session_state.current_modul in all_options else 0
-    selected_mod = st.selectbox("📱 CHỌN MODUL NGHIỆP VỤ:", all_options, index=m_idx)
-    
-    if selected_mod != st.session_state.current_modul:
-        st.session_state.current_modul = selected_mod
-        st.rerun()
-
-    st.divider()
-
-    if st.session_state.current_modul == "🏠 TẤT CẢ MODULS":
-        st.subheader("📦 Danh sách Moduls (Nghiệp vụ)")
-        cols = st.columns(3)
-        for i, mod in enumerate(moduls):
-            count = len([s for s in db_subs if s['sub_title'].startswith(f"{mod}|")])
-            with cols[i % 3].container(border=True):
-                st.markdown(f"### 📦 {mod}")
-                st.write(f"📄 {count} Forms con")
-                if st.button(f"Mở {mod}", key=f"btn_mod_{i}", use_container_width=True):
-                    st.session_state.current_modul = mod
-                    st.rerun()
-    else:
-        render_forms_list(ctrl, p, st.session_state.current_modul)
-
-def render_forms_list(ctrl, p, modul_name):
-    """Hiển thị các Forms con trong một Modul"""
-    st.subheader(f"📂 Modul: {modul_name}")
-    if st.button("⬅️ Quay lại danh sách Moduls"):
-        st.session_state.current_modul = "🏠 TẤT CẢ MODULS"
-        st.rerun()
-
-    sub_contents = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
-    display_subs = [s for s in sub_contents if s['sub_title'].startswith(f"{modul_name}|")]
-
-    with st.expander("➕ Thêm Form mới thủ công"):
-        c1, c2 = st.columns([3,1])
-        new_name = c1.text_input("Tên Form con:")
-        if c2.button("Xác nhận", use_container_width=True) and new_name:
-            full_name = f"{modul_name}|{new_name}"
-            if ctrl.add_sub_content(p['id'], full_name, p['folder_name']):
-                st.rerun()
-
-    if not display_subs:
-        st.info("Modul này chưa có Form nào.")
-    else:
-        status_options = ["Chưa quay", "Đã quay", "Hoàn chỉnh"]
-        dots = {"Chưa quay": "🔴", "Đã quay": "🟡", "Hoàn chỉnh": "🟢"}
-        
-        for s in display_subs:
-            sub_path = os.path.join(Config.BASE_STORAGE, p['folder_name'], s['sub_folder'])
-            current_status = get_status_info(sub_path, s.get('status'))
-            form_name = s['sub_title'].split('|')[-1] # Lấy tên form con
-
-            with st.container(border=True):
-                c_name, c_status, c_man, c_auto, c_opt = st.columns([2.5, 1.2, 1, 1, 0.5])
-                c_name.markdown(f"**{form_name}**")
-                
-                with c_status:
-                    new_status = st.selectbox(
-                        "Trạng thái", status_options,
-                        index=status_options.index(current_status) if current_status in status_options else 0,
-                        key=f"st_{s['id']}",
-                        label_visibility="collapsed",
-                        format_func=lambda x: f"{dots.get(x, '⚪')} {x}"
-                    )
-                    if new_status != s.get('status'):
-                        ctrl.update_sub_content(s['id'], s['sub_title'], new_status)
-                        st.rerun()
-
-                if c_man.button("🎥", key=f"m_{s['id']}", help="Quay thủ công"):
-                    st.session_state.active_project = p
-                    st.session_state.active_sub = s
-                    st.session_state.view = "studio"
-                    st.session_state.active_tab = "Quay thủ công"
-                    st.rerun()
-
-                if c_auto.button("🤖", key=f"a_{s['id']}", help="Quay tự động"):
-                    st.session_state.active_project = p
-                    st.session_state.active_sub = s
-                    st.session_state.view = "studio"
-                    st.session_state.active_tab = "Quay tự động 🤖"
-                    st.rerun()
-                
-                with c_opt.popover("⚙️"):
-                    if st.button("🗑️ XÓA FORM", key=f"del_{s['id']}", type="primary", use_container_width=True):
-                        if ctrl.delete_sub_content(s['id'], p['folder_name'], s['sub_folder']):
+    # TRƯỜNG HỢP A: KHỞI TẠO DỰ ÁN MỚI
+    if selected_p_title == NEW_PROJ_PLACEHOLDER:
+        with st.container(border=True):
+            st.subheader("🆕 Thiết lập dự án mới")
+            new_name = st.text_input("Nhập tên dự án Vũ muốn đặt:", placeholder="Ví dụ: Dự án Xây Dựng, Video TikTok...")
+            
+            if st.button("💾 LƯU VÀO DATABASE", type="primary", use_container_width=True):
+                if new_name:
+                    if new_name in db_titles:
+                        st.error("Tên này có rồi Vũ ơi, đặt tên khác đi!")
+                    else:
+                        if ctrl.create_tutorial(new_name):
+                            st.success(f"✅ Đã lưu dự án '{new_name}' thành công!")
+                            # Quan trọng: Gán tên mới vào session để sau khi rerun, selectbox tự nhảy vào dự án này
+                            st.session_state.selected_project_title = new_name
                             st.rerun()
+                else:
+                    st.warning("Vũ chưa nhập tên dự án kìa!")
+        return
+
+    # Tìm object dự án tương ứng trong DB
+    p = next((proj for proj in db_projects if proj['title'] == selected_p_title), None)
+
+    # TRƯỜNG HỢP B: CHỌN GIẢI PHÁP VÀNG NHƯNG DB CHƯA CÓ (CHƯA KÍCH HOẠT)
+    if selected_p_title == GPV_NAME and p is None:
+        st.warning(f"⚠️ Dự án '{GPV_NAME}' chưa được khởi tạo trong Database.")
+        if st.button(f"🚀 KÍCH HOẠT DỰ ÁN {GPV_NAME.upper()}", type="primary", use_container_width=True):
+            if ctrl.create_tutorial(GPV_NAME):
+                st.success("Khởi tạo Giải Pháp Vàng thành công!")
+                st.session_state.selected_project_title = GPV_NAME
+                st.rerun()
+        return
+
+    # TRƯỜNG HỢP C: DỰ ÁN ĐÃ TỒN TẠI (CHẠY LOGIC RENDER)
+    if p:
+        # Kiểm tra nếu là dự án Giải Pháp Vàng (dựa trên tên)
+        is_gpv = any(kw in p['title'].lower() for kw in ["giải pháp vàng", "giaiphapvang", "gpv"])
+        
+        if is_gpv:
+            render_gpv_logic(ctrl, p)
+        else:
+            render_normal_logic(ctrl, p)
+    else:
+        st.error("Dữ liệu dự án có vấn đề. Hãy bấm 'Làm mới' ở Sidebar.")

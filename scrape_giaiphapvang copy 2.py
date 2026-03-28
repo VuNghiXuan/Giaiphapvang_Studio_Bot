@@ -1,5 +1,4 @@
 import os
-import re
 import json
 import time
 from playwright.sync_api import sync_playwright
@@ -111,172 +110,88 @@ class GiaiphapvangScraper:
         return form_inputs
 
     
-    def _scan_create_form(self, page):
-        """Đột kích vào Form Tạo mới để lấy danh sách Input chi tiết"""
-        form_inputs = []
-        try:
-            # Tìm nút Tạo mới (chính xác text)
-            create_btn = page.get_by_role("button", name="Tạo mới", exact=True)
-            
-            if create_btn.is_visible():
-                print("     ✨ Phát hiện nút 'Tạo mới', đang thâm nhập Form...")
-                create_btn.click()
-                
-                # Chờ Dialog hoặc Drawer của MUI hiện lên (thường dùng cho form thêm mới)
-                # Timeout ngắn thôi, nếu không có thì bỏ qua
-                try:
-                    page.wait_for_selector(".MuiDialog-root, .MuiDrawer-root, form", timeout=3000)
-                    page.wait_for_timeout(500) # Đợi animation một chút
-                except:
-                    pass
-
-                # Quét sạch các input bên trong Form/Dialog
-                form_inputs = page.evaluate('''() => {
-                    // Chỉ quét trong container đang nổi lên (Dialog/Drawer) hoặc form
-                    const container = document.querySelector('.MuiDialog-root, .MuiDrawer-root, form');
-                    if (!container) return [];
-
-                    return Array.from(container.querySelectorAll('input, textarea, select'))
-                        .filter(el => {
-                            const type = el.type;
-                            return type !== 'checkbox' && type !== 'hidden' && type !== 'radio';
-                        })
-                        .map(el => {
-                            let label = "";
-                            // Tìm label theo ID hoặc bọc ngoài (MUI standard)
-                            if (el.id) label = document.querySelector(`label[for="${el.id}"]`)?.innerText;
-                            if (!label) label = el.closest('.MuiFormControl-root')?.querySelector('label')?.innerText;
-                            if (!label) label = el.placeholder || el.name;
-                            
-                            return { 
-                                label: (label || "N/A").replace('*', '').trim().split('\\n')[0], 
-                                name: el.name || el.id,
-                                type: el.type
-                            };
-                        });
-                }''')
-
-                if form_inputs:
-                    print(f"     📝 Đã bóc tách {len(form_inputs)} trường dữ liệu từ Form.")
-
-                # Thoát Form bằng phím Escape để về lại trang chính
-                page.keyboard.press("Escape")
-                page.wait_for_timeout(500)
-        except Exception as e:
-            print(f"     ⚠️ Lỗi khi quét Form: {e}")
-            page.keyboard.press("Escape")
-            
-        return form_inputs
-
-
     def extract_structure(self, page, page_name):
         print(f"  🕵️ Đang trích xuất: {page_name}")
         
         try:
-            # Chờ các thành phần UI cốt lõi của MUI xuất hiện
-            page.wait_for_selector(".MuiDataGrid-root, .MuiButton-root, input, .MuiTab-root", timeout=8000)
-            page.wait_for_timeout(2000) 
-        except:
-            print(f"     ⚠️ Trang {page_name} load chậm hoặc không có dữ liệu chuẩn.")
+            page.wait_for_load_state("networkidle", timeout=5000)
+            page.wait_for_timeout(1000) 
+        except: pass
 
         row_actions = self._get_hidden_row_actions(page)
         toolbar_actions = self._get_toolbar_actions(page)
 
         structure = page.evaluate('''() => {
-            const clean = (txt) => {
-                if (!txt) return "";
-                // Lấy dòng đầu, xóa dấu *, xóa icon rác, xóa khoảng trắng thừa
-                return txt.split('\\n')[0].replace(/[\\*\\•]/g, '').replace(/\\s+/g, ' ').trim();
-            };
-
-            const navKeywords = ['Thông tin công ty', 'Nhập hàng', 'Giá vốn', 'Kho & Quầy', 'Danh mục', 'Hệ thống', 'Cấu hình', 'Báo cáo', 'Quản lý'];
+            const getSafeAttr = (el, attr) => (el.getAttribute(attr) || "").trim();
             
-            const allElements = Array.from(document.querySelectorAll('button, [role="button"], .MuiButton-root, .MuiTab-root'));
+            // 1. Định nghĩa "Blacklist" cho các nút điều hướng/giao diện
+            const navKeywords = [
+                'Thông tin công ty', 'Nhập hàng', 'Giá vốn', 'Kho & Quầy', 
+                'Danh mục', 'Hệ thống', 'Cấu hình', 'Báo cáo', 'Quản lý'
+            ];
 
-            // 1. Tách Navigation/Tabs
-            const navigationTabs = allElements.filter(el => {
-                const txt = clean(el.innerText);
-                const isNavZone = el.closest('nav') || el.closest('.MuiDrawer-root') || el.closest('.MuiAppBar-root') || el.closest('.MuiTabs-root');
-                // Chỉ lấy nếu nằm trong vùng Nav hoặc khớp từ khóa và dài hơn 1 ký tự (loại bỏ phím tắt "S")
-                return (isNavZone || navKeywords.some(k => txt.includes(k))) && txt.length > 1;
-            }).map(el => clean(el.innerText));
+            const allButtons = Array.from(document.querySelectorAll('button, [role="button"], .MuiButton-root'));
 
-            // 2. Page Actions (Nút thao tác chính)
-            const pageActions = allElements.filter(el => {
-                const txt = clean(el.innerText);
-                if (txt.length <= 1) return false;
+            // 2. Tách Navigation/Tabs (Nút để di chuyển giữa các phân hệ)
+            const navElements = allButtons.filter(el => {
+                const txt = el.innerText.trim();
+                return el.closest('.MuiTabs-root') || 
+                       el.closest('.MuiList-root') || 
+                       navKeywords.some(key => txt.includes(key));
+            }).map(el => el.innerText.trim().split('\\n')[0]);
 
+            // 3. Tách Page Actions (Chỉ giữ lại nút chức năng: Tạo mới, Lưu, Hủy, In...)
+            const pageActions = allButtons.filter(el => {
+                const txt = el.innerText.trim();
                 const isInsideGrid = el.closest('.MuiDataGrid-root');
-                const isInsideNav = el.closest('nav') || el.closest('.MuiDrawer-root') || el.closest('.MuiAppBar-root') || el.closest('.MuiTabs-root');
-                const isPagination = el.closest('.MuiTablePagination-root');
-                const isNavLink = navKeywords.some(k => txt === k);
+                // Nút được giữ lại: Không nằm trong bảng và không thuộc blacklist điều hướng
+                const isNav = el.closest('.MuiTabs-root') || 
+                              el.closest('.MuiList-root') || 
+                              navKeywords.some(key => txt.includes(key));
+                
+                return txt.length > 1 && !isInsideGrid && !isNav;
+            }).map(el => ({ text: el.innerText.trim().split('\\n')[0] }));
 
-                return !isInsideGrid && !isInsideNav && !isPagination && !isNavLink;
-            }).map(el => ({ text: clean(el.innerText) }));
-
-            // 3. Quét Bảng
+            // 4. Quét Bảng (Giữ nguyên)
             const tables = Array.from(document.querySelectorAll('.MuiDataGrid-root, table')).map(grid => ({
                 type: grid.tagName === 'TABLE' ? 'Table' : 'DataGrid',
                 columns: Array.from(grid.querySelectorAll('.MuiDataGrid-columnHeaderTitle, th'))
-                            .map(h => clean(h.innerText))
-                            .filter(h => h && !['STT', 'Chức năng', 'Thao tác'].includes(h))
+                              .map(h => h.innerText.trim())
+                              .filter(h => h.length > 0)
             }));
 
-            // 4. Quét Inputs
-            const inputs = Array.from(document.querySelectorAll('input, textarea, select'))
-                .filter(el => {
-                    const isSystemField = el.closest('.MuiTablePagination-root') || el.closest('.MuiDataGrid-toolbarContainer');
-                    return el.type !== 'hidden' && el.type !== 'checkbox' && !isSystemField;
-                })
-                .map(el => {
-                    let label = "";
-                    const labelEl = el.id ? document.querySelector(`label[for="${el.id}"]`) : null;
-                    const parentLabel = el.closest('.MuiFormControl-root')?.querySelector('label');
-                    
-                    label = clean(labelEl?.innerText || parentLabel?.innerText || el.placeholder || el.name || "N/A");
-                    
-                    return { 
-                        label: label, 
-                        name: el.name || el.id || "unknown"
-                    };
-                }).filter(i => i.label !== "N/A" && i.name !== "unknown");
-
             return {
-                page_actions: [...new Set(pageActions.map(a => JSON.stringify(a)))].map(s => JSON.parse(s)), 
-                navigation_tabs: [...new Set(navigationTabs)],
+                page_actions: pageActions, 
+                navigation_tabs: [...new Set(navElements)],
                 tables: tables,
-                inputs: inputs
+                inputs: Array.from(document.querySelectorAll('input, textarea, select'))
+                    .filter(el => {
+                        const isPagination = el.closest('.MuiTablePagination-root');
+                        const isSearchInsideGrid = el.closest('.MuiDataGrid-toolbarContainer');
+                        return el.type !== 'checkbox' && !isPagination && !isSearchInsideGrid;
+                    })
+                    .map(el => {
+                        let label = "";
+                        if (el.id) label = document.querySelector(`label[for="${el.id}"]`)?.innerText;
+                        if (!label) label = el.closest('.MuiFormControl-root')?.querySelector('label')?.innerText;
+                        if (!label) label = el.placeholder || el.name;
+                        return { 
+                            label: (label || "N/A").replace('*', '').trim(), 
+                            name: el.name || el.id
+                        };
+                    })
             };
         }''')
 
-        # Hậu kỳ: Dọn dẹp toolbar_actions bằng Python
-        if structure.get('tables') and toolbar_actions:
-            cleaned_toolbar = []
-            for action in toolbar_actions:
-                if action:
-                    # Xử lý chuỗi rác như "0\\nBộ lọc" -> "Bộ lọc"
-                    name_only = action.split('\n')[0]
-                    clean_name = re.sub(r'[0-9]', '', name_only).strip()
-                    if clean_name and len(clean_name) > 1:
-                        cleaned_toolbar.append(clean_name)
-            
-            if structure['tables']:
-                structure['tables'][0]['toolbar_actions'] = cleaned_toolbar
-
+        # Gắn kết quả bổ sung
         structure['row_actions_hidden'] = row_actions
-        
-        # Kiểm tra nút "Tạo mới" để kích hoạt scan form
-        has_create_btn = any(btn['text'] == 'Tạo mới' for btn in structure['page_actions'])
-        structure['create_form_fields'] = self._scan_create_form(page) if has_create_btn else []
+        if structure['tables'] and toolbar_actions:
+            structure['tables'][0]['toolbar_actions'] = toolbar_actions
 
-        # Lưu kết quả
         self.knowledge_data[page_name] = {"url": page.url, "structure": structure}
         self.save_to_file()
-        
-        detail = f", {len(structure['create_form_fields'])} fields" if has_create_btn else ""
-        print(f"     ✅ Hoàn tất: {len(structure['page_actions'])} actions, {len(structure['tables'])} tables{detail}.")
-    
-    
+        print(f"     ✅ Xong: {len(structure['page_actions'])} nút lệnh, {len(structure['navigation_tabs'])} mục điều hướng.")
+
     def expand_and_get_submenus(self, page):
         print("  🔍 Đang mở rộng Sidebar...")
         expandable_selectors = [".MuiListItemButton-root:not(a)", ".minimal__nav__item__root:not(a)"]
