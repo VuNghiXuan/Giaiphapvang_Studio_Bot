@@ -1,9 +1,14 @@
 import streamlit as st
 import os
-from Bot_GPV.crawle.scrape_giaiphapvang import GiaiphapvangScraper
-# from .dashboard_ui_components import render_item_rows # Import hàm vẽ dòng từ file linh kiện
-from ..components.dashboard_component import render_item_rows
 import json
+import time
+from playwright.sync_api import Page
+from Bot_GPV.crawle.scrape_giaiphapvang import GiaiphapvangScraper
+from ..components.dashboard_component import render_item_rows
+
+# ==========================================
+# 1. LOGIC GIAO DIỆN (STREAMLIT UI)
+# ==========================================
 
 def render_gpv_logic(ctrl, p):
     """Logic phân cấp Module cho Giải Pháp Vàng"""
@@ -17,10 +22,8 @@ def render_gpv_logic(ctrl, p):
                     extractor = GiaiphapvangScraper()
                     for mod in extractor.get_home_modules():
                         full_t = f"{mod['text']}|Home"
-                        # Chỉ add nếu chưa có trong DB
                         if not any(s['sub_title'] == full_t for s in db_subs):
                             ctrl.add_sub_content(p['id'], full_t, p['folder_name'])
-                            # Lấy ID vừa tạo để update URL vào cột status (hardcode logic của Vũ)
                             last = [dict(s) for s in ctrl.get_sub_contents(p['id'])][-1]
                             ctrl.update_sub_content(last['id'], full_t, mod['href'])
                     st.rerun()
@@ -57,7 +60,6 @@ def render_gpv_forms(ctrl, p, modul_name):
             mod_home = next((s for s in db_subs if s['sub_title'] == f"{modul_name}|Home"), None)
             if mod_home:
                 extractor = GiaiphapvangScraper()
-                # Quét chi tiết từ link Home của module
                 results = extractor.update_module_details(modul_name, mod_home['status'])
                 for f_name in results.keys():
                     full_t = f"{modul_name}|{f_name}"
@@ -65,43 +67,107 @@ def render_gpv_forms(ctrl, p, modul_name):
                         ctrl.add_sub_content(p['id'], full_t, p['folder_name'])
                 st.rerun()
 
-    # Chỉ hiển thị các dòng thuộc module hiện tại và bỏ dòng |Home đi
     display_subs = [dict(s) for s in ctrl.get_sub_contents(p['id']) 
                     if s['sub_title'].startswith(f"{modul_name}|") and not s['sub_title'].endswith("|Home")]
     render_item_rows(ctrl, p, display_subs)
 
 
-    # ------------Hàm cho AI lấy thông tin file Json biên kịch bản -------------------
-    def get_form_knowledge(module_name, form_name):
-        """
-        Hàm này chỉ làm đúng 1 việc: Đọc JSON -> Lọc đúng Form -> Trả về cho AI
-        """
-        json_path = "data/knowledge_source.json"
-        
-        if not os.path.exists(json_path):
-            return "⚠️ Chưa có dữ liệu kiến thức, Vũ hãy chạy Quét (Scrape) trước nhé!"
+# ==========================================
+# 2. LOGIC TRUY XUẤT KIẾN THỨC (KNOWLEDGE)
+# ==========================================
 
-        try:
-            with open(json_path, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            
-            # Key định danh: "Tên Module|Tên Form"
-            target_key = f"{module_name}|{form_name}"
-            
-            if target_key in data:
-                info = data[target_key]
-                struct = info.get('structure', {})
-                
-                # Chuẩn bị nội dung 'sạch' nhất để AI không bị lú
-                knowledge_text = f"""
-                DỮ LIỆU NGHIỆP VỤ CHO FORM: {form_name}
-                - Module: {module_name}
-                - Các cột hiển thị trên bảng: {', '.join(struct.get('columns', []))}
-                - Các nút chức năng có sẵn: {', '.join(struct.get('actions', []))}
-                - Các trường nhập liệu (Form Fields): {json.dumps(struct.get('form_fields', []), ensure_ascii=False)}
-                """
-                return knowledge_text
-        except Exception as e:
-            return f"❌ Lỗi đọc file: {str(e)}"
+def get_form_knowledge(module_name, form_name):
+    """Trích xuất kiến thức tinh gọn cho AI"""
+    # Lấy đường dẫn động từ root dự án
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) 
+    json_path = os.path.join(base_dir, "data", "knowledge_source.json")
+    
+    if not os.path.exists(json_path):
+        return None
+
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
         
-        return f"🔍 Không tìm thấy kiến thức cho {form_name} trong module {module_name}"
+        target_key = f"{module_name}|{form_name}"
+        if target_key not in data:
+            return f"⚠️ Dữ liệu cho '{form_name}' chưa được quét."
+
+        struct = data[target_key].get('structure', {})
+        fields = [f.get('label') for f in struct.get('form_fields', []) if f.get('label')]
+        
+        return f"""
+### THÔNG TIN NGHIỆP VỤ: {form_name}
+- **Module:** {module_name}
+- **Bảng:** {', '.join(struct.get('columns', []))}
+- **Nút:** {', '.join(struct.get('actions', []))}
+- **Ô nhập:** {', '.join(fields)}
+"""
+    except Exception as e:
+        return f"❌ Lỗi: {str(e)}"
+
+
+# ==========================================
+# 3. LOGIC ĐIỀU KHIỂN BOT (AUTOMATION)
+# ==========================================
+
+def highlight_element(page: Page, selector: str, duration_seconds: float = 1.5):
+    """Highlight phần tử trên web trước khi thao tác"""
+    try:
+        page.wait_for_selector(selector, state="visible", timeout=5000)
+        
+        # JS tạo hiệu ứng phồng nhẹ và viền đỏ
+        js_code = f"""
+            (sel) => {{
+                const el = document.querySelector(sel);
+                if (el) {{
+                    el.dataset.oldStyle = el.style.cssText;
+                    el.style.cssText = "border: 3px solid red !important; background: rgba(255,255,0,0.2) !important; transition: 0.3s; transform: scale(1.05); z-index: 9999;";
+                }}
+            }}
+        """
+        page.evaluate(js_code, selector)
+        time.sleep(duration_seconds)
+        
+        # Xóa highlight
+        page.evaluate("(sel) => { const el = document.querySelector(sel); if(el) el.style.cssText = el.dataset.oldStyle; }", selector)
+    except:
+        pass
+
+def bot_execute_step(page: Page, step_action, target_label, knowledge_full_data):
+    """Thực hiện một bước trong kịch bản"""
+    struct = knowledge_full_data.get('structure', {})
+    
+    # 1. Tìm selector
+    selector = f"text='{target_label}'" # Mặc định tìm theo text nút
+    
+    # Nếu là field nhập liệu, tìm theo ID/Name
+    field = next((f for f in struct.get('form_fields', []) if f['label'] == target_label), None)
+    if field:
+        selector = f"#{field.get('id')}" if field.get('id') else f"[name='{field.get('name')}']"
+
+    # 2. Highlight và Chạy
+    highlight_element(page, selector)
+    
+    if step_action == "click":
+        page.click(selector)
+    elif step_action == "fill":
+        page.fill(selector, "Dữ liệu mẫu") # Chỗ này Vũ có thể lấy từ file mock_data
+
+def suggest_video_scenarios(module_name, form_name):
+    """Gợi ý các loại video có thể sản xuất dựa trên nút bấm tìm thấy"""
+    knowledge = get_form_knowledge(module_name, form_name)
+    if not knowledge: return []
+    
+    scenarios = []
+    # Logic: Nếu thấy chữ 'Thêm' hoặc 'Lưu' -> Gợi ý kịch bản Thêm mới
+    if any(keyword in knowledge for keyword in ['Thêm', 'Lưu', 'Tạo']):
+        scenarios.append({"id": "ADD", "label": "Hướng dẫn Thêm mới", "icon": "➕"})
+    
+    if any(keyword in knowledge for keyword in ['Xóa', 'Hủy', 'Bỏ']):
+        scenarios.append({"id": "DEL", "label": "Hướng dẫn Xóa/Hủy", "icon": "🗑️"})
+        
+    if any(keyword in knowledge for keyword in ['Sửa', 'Cập nhật']):
+        scenarios.append({"id": "EDIT", "label": "Hướng dẫn Chỉnh sửa", "icon": "📝"})
+        
+    return scenarios

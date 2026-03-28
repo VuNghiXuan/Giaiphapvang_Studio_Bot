@@ -1,23 +1,42 @@
 import os
 
 class Config:
-    # Thư mục gốc chứa toàn bộ dự án
+    # --- THÔNG TIN HỆ THỐNG TARGET ---
+    TARGET_DOMAIN = "https://giaiphapvang.net" # Sau này đổi domain chỉ cần sửa 1 chỗ này
+    APP_NAME = "Giải Pháp Vàng"
+    
+    # --- CẤU HÌNH MARKETING & BRANDING ---
+    # Slogan mặc định lấy từ đây, không cần gõ tay lại nhiều lần
+    DEFAULT_SLOGAN = "Giải Pháp Vàng - Dẫn đầu công nghệ quản lý tiệm vàng"
+    
+    # Danh sách nghiệp vụ chuẩn (AI Scenarios)
+    # Vũ có thể thêm bớt loại hướng dẫn ở đây, GUI sẽ tự cập nhật theo
+    AI_SCENARIOS = [
+        {"id": "ADD", "label": "Hướng dẫn Thêm mới", "icon": "➕"},
+        {"id": "EDIT", "label": "Chỉnh sửa thông tin", "icon": "📝"},
+        {"id": "DEL", "label": "Xóa/Hủy dữ liệu", "icon": "🗑️"},
+        {"id": "SEARCH", "label": "Tra cứu & Bộ lọc", "icon": "🔍"},
+        {"id": "REPORT", "label": "Xuất báo cáo", "icon": "📊"},
+        {"id": "FLOW", "label": "Kết nối quy trình", "icon": "🔗"}
+    ]
+
+    # --- ĐƯỜNG DẪN LƯU TRỮ (Paths) ---
     BASE_STORAGE = os.path.abspath("./storage")
-    
-    # Tên thư mục con trong mỗi bài học để chứa các bản thảo kịch bản
     SCRIPTS_DIR_NAME = "scripts"
-    
-    # Tên thư mục con chứa video gốc
     RAW_DIR_NAME = "raw"
-    
-    # File cơ sở dữ liệu
     DB_PATH = os.path.abspath("database.db")
     
+    # File chứa toàn bộ kiến thức đã crawl (Knowledge Base)
+    KNOWLEDGE_JSON_PATH = os.path.join(BASE_STORAGE, "knowledge_source.json")
+
     @classmethod
     def init_folders(cls):
-        # Tạo thư mục storage gốc nếu chưa có
-        if not os.path.exists(cls.BASE_STORAGE):
-            os.makedirs(cls.BASE_STORAGE)
+        for path in [cls.BASE_STORAGE]:
+            if not os.path.exists(path):
+                os.makedirs(path)
 
-# Khởi tạo ngay khi import config
+# Khởi tạo thư mục
 Config.init_folders()
+
+# --- CẤU HÌNH AI PROVIDERS ---
+# (Giữ nguyên phần API Key của Vũ ở dưới...)

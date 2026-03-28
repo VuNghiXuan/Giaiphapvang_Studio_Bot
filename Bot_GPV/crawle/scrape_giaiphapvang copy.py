@@ -4,19 +4,18 @@ import json
 import time
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
-from config import Config
 
 load_dotenv()
 
 class GiaiphapvangScraper:
-    def __init__(self):
-        # Lấy đường dẫn file từ Config thay vì hardcode
-        self.output_file = Config.KNOWLEDGE_JSON_PATH
-        # Đảm bảo thư mục storage tồn tại
+    def __init__(self, output_file="data/knowledge_source.json"):
+        self.output_file = os.path.abspath(output_file)
+        # Đảm bảo có thư mục data
         os.makedirs(os.path.dirname(self.output_file), exist_ok=True)
+        self.knowledge_data = {}
 
     def _save_step(self, new_data):
-        """Lưu và merge dữ liệu liên tục"""
+        """Lưu và merge dữ liệu liên tục để tránh mất công quét nếu bị crash"""
         existing_data = {}
         if os.path.exists(self.output_file):
             try:
@@ -31,21 +30,15 @@ class GiaiphapvangScraper:
     
 
     def login(self, page):
-        print(f"🔑 Đang đăng nhập hệ thống: {Config.TARGET_DOMAIN}")
+        print("🔑 Đang đăng nhập hệ thống...")
         try:
-            # Sử dụng Domain từ Config để tạo link login
-            login_url = f"{Config.TARGET_DOMAIN.rstrip('/')}/auth/jwt/sign-in/"
-            page.goto(login_url)
-            
-            # Lấy thông tin đăng nhập từ biến môi trường (os.getenv)
+            page.goto("https://giaiphapvang.net/auth/jwt/sign-in/")
             page.fill("input[name='email']", os.getenv("USER_EMAIL"))
             page.fill("input[name='password']", os.getenv("USER_PASSWORD"))
             page.click("button[type='submit']")
-            
-            # Chờ chuyển hướng thành công
             page.wait_for_url("**/home/**", timeout=30000)
             print("🏠 Đăng nhập thành công!")
-            page.wait_for_timeout(1000)
+            page.wait_for_timeout(2000)
             return True
         except Exception as e:
             print(f"❌ Đăng nhập thất bại: {e}")
@@ -53,82 +46,88 @@ class GiaiphapvangScraper:
         
 
     def get_home_modules(self):
-        """CẤP ĐỘ 1: Vét sạch Module lớn từ trang chủ"""
+        """CẤP ĐỘ 1: Vét sạch Module lớn"""
         modules = []
         with sync_playwright() as p:
-            # headless=True nếu Vũ muốn chạy ngầm, False để xem nó quét
             browser = p.chromium.launch(headless=False)
             page = browser.new_page()
             if self.login(page):
-                print("🔍 Đang vét danh sách nghiệp vụ...")
+                print("🔍 Đang đợi trang chủ load danh sách nghiệp vụ...")
+                # Chờ element chứa các module hiện ra (thường là Grid của MUI)
                 try:
                     page.wait_for_selector(".MuiGrid-item", timeout=10000)
+                    page.wait_for_timeout(1000) # Nghỉ 1s cho chắc
                 except: pass
 
-                # Chỉ lấy các link thuộc domain mình quản lý
-                modules = page.evaluate(f'''() => {{
+                modules = page.evaluate('''() => {
                     const links = Array.from(document.querySelectorAll('a'));
                     return links
-                        .map(a => ({{ 
+                        .map(a => ({ 
                             text: a.innerText.trim().split('\\n')[0], 
                             href: a.href 
-                        }}))
-                        .filter(m => m.text.length > 2 && m.href.includes('{Config.TARGET_DOMAIN}'));
-                }}''')
+                        }))
+                        .filter(m => m.text.length > 2 && m.href.includes('/'));
+                }''')
                 
-                # Loại bỏ rác
-                exclude_keywords = ["Đăng xuất", "Profile", "Thông báo", "Cài đặt", "Setting"]
+                # Chỉ loại bỏ những cái chắc chắn là hệ thống, không loại bỏ nghiệp vụ
+                exclude_keywords = ["Đăng xuất", "Profile", "Thông báo", "Setting"]
                 unique_modules = {}
                 for m in modules:
                     if not any(k.lower() in m['text'].lower() for k in exclude_keywords):
                         unique_modules[m['href']] = m
                 
                 modules = list(unique_modules.values())
+                print(f"✅ Đã vét xong: Tìm thấy {len(modules)} Modules nghiệp vụ.")
             browser.close()
         return modules
-    
 
     def update_module_details(self, module_name, module_url):
         """CẤP ĐỘ 2: Chui sâu vào 1 Module để vét sạch Form con"""
         results = {}
         with sync_playwright() as p:
-            # slow_mo để tránh bị chặn và giúp UI kịp render
-            browser = p.chromium.launch(headless=False, slow_mo=500) 
+            # slow_mo giúp Playwright không bị hệ thống coi là bot quá nhanh
+            browser = p.chromium.launch(headless=False, slow_mo=400) 
             page = browser.new_page()
             
             if self.login(page):
-                print(f"🚀 Thâm nhập Module: {module_name}")
+                print(f"🚀 Bắt đầu thâm nhập: {module_name}")
                 try:
                     page.goto(module_url, wait_until="networkidle", timeout=60000)
+                    
+                    # 1. Mở rộng toàn bộ Sidebar để thấy link con
                     self._expand_sidebar(page)
+                    
+                    # 2. Lấy link các Form con
                     sub_links = self._get_sidebar_links(page)
                     
+                    # 3. Quét chi tiết từng Form
                     for link in sub_links:
-                        # Tránh loop vô tận vào trang chính của module
+                        # Bỏ qua link chính nó (trang chủ module)
                         if link['href'].strip('/') == module_url.strip('/'): continue
                         
-                        print(f"   ∟ Đang quét: {link['text']}")
+                        print(f"   ∟ Đang phân tích Form: {link['text']}")
                         try:
                             page.goto(link['href'], wait_until="networkidle", timeout=30000)
+                            # Trích xuất cấu trúc (Bảng, Form, Input...)
                             structure = self._extract_page_structure(page)
                             
                             key_name = f"{module_name}|{link['text']}"
-                            form_data = {
+                            results[link['text']] = {
                                 "module": module_name,
                                 "url": link['href'],
                                 "structure": structure,
                                 "updated_at": time.strftime("%Y-%m-%d %H:%M:%S")
                             }
-                            results[link['text']] = form_data
                             
-                            # Lưu ngay lập tức vào file JSON trung tâm
-                            self._save_step({key_name: form_data})
+                            # Lưu từng bước (merge vào JSON)
+                            self._save_step({key_name: results[link['text']]})
                             
                         except Exception as e:
-                            print(f"      ⚠️ Lỗi trang {link['text']}: {e}")
+                            print(f"      ⚠️ Lỗi quét trang {link['text']}: {e}")
+                            continue
                             
                 except Exception as e:
-                    print(f"❌ Lỗi Module {module_name}: {e}")
+                    print(f"❌ Lỗi truy cập Module {module_name}: {e}")
             
             browser.close()
         return results
