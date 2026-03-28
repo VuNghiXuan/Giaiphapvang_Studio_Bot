@@ -7,7 +7,7 @@ class Config:
     
     # --- CẤU HÌNH MARKETING & BRANDING ---
     # Slogan mặc định lấy từ đây, không cần gõ tay lại nhiều lần
-    DEFAULT_SLOGAN = "Giải Pháp Vàng - Dẫn đầu công nghệ quản lý tiệm vàng"
+    DEFAULT_SLOGAN = "Ứng dụng vàng, giải pháp toàn diện cho ngành kim hoàn"
     
     # Danh sách nghiệp vụ chuẩn (AI Scenarios)
     # Vũ có thể thêm bớt loại hướng dẫn ở đây, GUI sẽ tự cập nhật theo

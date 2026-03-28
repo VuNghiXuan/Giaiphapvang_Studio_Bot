@@ -5,6 +5,7 @@ import time
 from playwright.sync_api import sync_playwright
 from dotenv import load_dotenv
 from config import Config
+from PIL import Image # pip install Pillow
 
 load_dotenv()
 
@@ -84,6 +85,7 @@ class GiaiphapvangScraper:
                         unique_modules[m['href']] = m
                 
                 modules = list(unique_modules.values())
+                print(f"✅ Đã vét xong: Tìm thấy {len(modules)} Modules nghiệp vụ.")
             browser.close()
         return modules
     
@@ -126,7 +128,7 @@ class GiaiphapvangScraper:
                             
                         except Exception as e:
                             print(f"      ⚠️ Lỗi trang {link['text']}: {e}")
-                            
+                    print(f"\n🏁 Đã cập nhật xong toàn bộ module con và các nút")        
                 except Exception as e:
                     print(f"❌ Lỗi Module {module_name}: {e}")
             
@@ -197,3 +199,21 @@ class GiaiphapvangScraper:
 
             return structure;
         }''')
+    
+    
+
+    def save_and_compress_screenshot(self, page, save_path):
+        # 1. Chụp ảnh tạm
+        temp_path = save_path.replace(".png", "_raw.png")
+        page.screenshot(path=temp_path)
+        
+        # 2. Dùng Pillow để nén
+        with Image.open(temp_path) as img:
+            # Chuyển về RGB và Resize nhỏ lại (ví dụ rộng 1280px là đủ nhìn)
+            img = img.convert("RGB")
+            img.thumbnail((1280, 1280)) 
+            # Lưu dạng JPEG chất lượng 60% cho cực nhẹ
+            img.save(save_path, "JPEG", quality=60)
+        
+        # 3. Xóa file tạm
+        os.remove(temp_path)
