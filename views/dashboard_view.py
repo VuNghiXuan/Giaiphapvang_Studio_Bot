@@ -1,9 +1,10 @@
 import streamlit as st
 import os
 from config import Config
-# Import các hàm xử lý logic và giao diện từ sub-folder
-# Đảm bảo đường dẫn .utils_dashboad là chính xác theo folder của ông
-from .utils_dashboad.gpv_handler import render_gpv_logic, render_gpv_forms, render_item_rows
+# Import logic điều hướng từ gpv_handler
+from .utils_dashboad.gpv_handler import render_gpv_logic, render_gpv_forms, ai_handler
+# Import class giao diện từ components
+from .components.dashboard_component import GPVComponent
 
 # --- 1. HÀM RENDER CHO DỰ ÁN THƯỜNG ---
 def render_normal_logic(ctrl, p):
@@ -30,8 +31,9 @@ def render_normal_logic(ctrl, p):
     if not display_subs:
         st.info("Dự án này chưa có bài học nào. Hãy thêm ở trên 👆")
     else:
-        # Gọi hàm vẽ từng dòng video (🎥, 🤖, ⚙️) từ gpv_handler.py
-        render_item_rows(ctrl, p, display_subs)
+        # GỌI TỪ CLASS COMPONENT: Vẽ từng dòng video (🎥, 🤖, ⚙️)
+        # Truyền thêm ai_handler để phục vụ cấu hình AI trong popover
+        GPVComponent.render_item_rows(ctrl, p, display_subs, ai_handler)
 
 
 # --- 2. HÀM CHÍNH ĐIỀU HƯỚNG DASHBOARD ---
@@ -70,7 +72,6 @@ def render_dashboard(ctrl):
     display_options.append(NEW_PROJ_PLACEHOLDER)
 
     # --- FIX LỖI RESET ID CHỌN DỰ ÁN ---
-    # Tìm vị trí của dự án đang chọn trong danh sách mới để giữ trạng thái selectbox
     try:
         current_index = display_options.index(st.session_state.selected_project_title)
     except (ValueError, KeyError):
@@ -82,7 +83,6 @@ def render_dashboard(ctrl):
         index=current_index
     )
 
-    # Cập nhật session state ngay khi chọn
     st.session_state.selected_project_title = selected_p_title
 
     if selected_p_title == "-- Chọn dự án --":
@@ -91,7 +91,6 @@ def render_dashboard(ctrl):
 
     # --- 2. XỬ LÝ LOGIC THEO LỰA CHỌN ---
 
-    # TRƯỜNG HỢP A: KHỞI TẠO DỰ ÁN MỚI
     if selected_p_title == NEW_PROJ_PLACEHOLDER:
         with st.container(border=True):
             st.subheader("🆕 Thiết lập dự án mới")
@@ -104,17 +103,14 @@ def render_dashboard(ctrl):
                     else:
                         if ctrl.create_tutorial(new_name):
                             st.success(f"✅ Đã lưu dự án '{new_name}' thành công!")
-                            # Quan trọng: Gán tên mới vào session để sau khi rerun, selectbox tự nhảy vào dự án này
                             st.session_state.selected_project_title = new_name
                             st.rerun()
                 else:
                     st.warning("Vũ chưa nhập tên dự án kìa!")
         return
 
-    # Tìm object dự án tương ứng trong DB
     p = next((proj for proj in db_projects if proj['title'] == selected_p_title), None)
 
-    # TRƯỜNG HỢP B: CHỌN GIẢI PHÁP VÀNG NHƯNG DB CHƯA CÓ (CHƯA KÍCH HOẠT)
     if selected_p_title == GPV_NAME and p is None:
         st.warning(f"⚠️ Dự án '{GPV_NAME}' chưa được khởi tạo trong Database.")
         if st.button(f"🚀 KÍCH HOẠT DỰ ÁN {GPV_NAME.upper()}", type="primary", use_container_width=True):
@@ -124,7 +120,6 @@ def render_dashboard(ctrl):
                 st.rerun()
         return
 
-    # TRƯỜNG HỢP C: DỰ ÁN ĐÃ TỒN TẠI (CHẠY LOGIC RENDER)
     if p:
         # Kiểm tra nếu là dự án Giải Pháp Vàng (dựa trên tên)
         is_gpv = any(kw in p['title'].lower() for kw in ["giải pháp vàng", "giaiphapvang", "gpv"])

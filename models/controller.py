@@ -195,15 +195,31 @@ class StudioController:
             return False
         
     # -------------Thêm hàm cho Bot update dự án giaiphapvang ----------------
-    def update_sub_content(self, sub_id, new_title, new_status):
+    def update_sub_content(self, sub_id, new_title=None, new_status=None):
         """
-        Cập nhật tiêu đề và trạng thái (Chưa quay, Đã quay...) cho bài học.
-        Giữ nguyên logic commit của hệ thống.
+        Cập nhật thông tin Form. 
+        Nếu new_status là URL (bắt đầu bằng http), nó sẽ giữ nguyên URL đó.
+        Nếu là trạng thái nghiệp vụ, nó sẽ cập nhật để Vũ quản lý.
         """
         try:
+            # 1. Lấy dữ liệu hiện tại để so sánh
+            current = self.db.execute("SELECT sub_title, status FROM sub_contents WHERE id = ?", (sub_id,)).fetchone()
+            if not current: return False
+            
+            curr_title, curr_status = current
+            
+            # 2. Logic giữ lại URL nếu new_status chỉ là trạng thái video (và ngược lại)
+            final_title = new_title if new_title else curr_title
+            
+            # Mẹo: Nếu new_status truyền vào không phải URL (không có 'http') 
+            # mà cái cũ đang là URL, thì Vũ có thể cân nhắc lưu URL vào một cột khác hoặc 
+            # chỉ cập nhật nếu thực sự cần thiết. 
+            # Ở đây tôi ưu tiên: Nếu có truyền status mới thì lấy cái mới.
+            final_status = new_status if new_status else curr_status
+
             self.db.execute(
                 "UPDATE sub_contents SET sub_title = ?, status = ? WHERE id = ?", 
-                (new_title, new_status, sub_id)
+                (final_title, final_status, sub_id)
             )
             self.db.commit()
             return True
