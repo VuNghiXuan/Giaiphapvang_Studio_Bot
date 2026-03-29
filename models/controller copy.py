@@ -7,7 +7,7 @@ from .db_engine import DBEngine
 
 class StudioController:
     def __init__(self):
-        # Kết nối DB và khởi tạo bảng với cấu trúc có cột 'url' và 'metadata'
+        # Kết nối DB và đảm bảo bảng đã có cột metadata
         self.db = DBEngine()
 
     # --- QUẢN LÝ DỰ ÁN LỚN (TUTORIALS) ---
@@ -78,146 +78,76 @@ class StudioController:
 
     # --- QUẢN LÝ BÀI HỌC CON (SUB_CONTENTS) ---
 
-    def add_sub_content(self, t_id, sub_title, parent_folder, metadata=None, url=None):
+    def add_sub_content(self, t_id, sub_title, parent_folder, metadata=None):
         """
-        Thêm bài học mới (Form) kèm Metadata và URL.
-        Tự động bỏ qua nếu URL đã tồn tại trong Project này để tránh trùng lặp khi quét lại.
+        Thêm bài học mới kèm metadata (JSON structure từ Scraper).
+        metadata: Có thể là Dictionary hoặc String JSON.
         """
-        # 1. Chuẩn hóa tên folder (Xóa dấu, ký tự đặc biệt)
         sub_folder_name = "".join([c if c.isalnum() else "_" for c in sub_title])
         full_sub_path = os.path.join(Config.BASE_STORAGE, parent_folder, sub_folder_name)
         
-        # 2. Parse Metadata sang JSON String để lưu vào cột TEXT/BLOB
+        # Đảm bảo metadata lưu vào DB là String JSON
         if isinstance(metadata, (dict, list)):
             metadata_str = json.dumps(metadata, ensure_ascii=False)
         else:
-            metadata_str = metadata if metadata else ""
+            metadata_str = metadata
 
         try:
-            # 3. CHỐNG TRÙNG: Kiểm tra xem URL này đã có trong dự án (t_id) này chưa
-            if url:
-                existing = self.db.execute(
-                    "SELECT id FROM sub_contents WHERE tutorial_id = ? AND url = ?", 
-                    (t_id, url)
-                ).fetchone()
-                if existing:
-                    print(f"⚠️ Bỏ qua: Form '{sub_title}' đã tồn tại (URL trùng).")
-                    return True
+            res = self.db.execute("SELECT MAX(position) as max_pos FROM sub_contents WHERE tutorial_id = ?", (t_id,)).fetchone()
+            next_pos = (res['max_pos'] + 1) if res and res['max_pos'] is not None else 0
 
-            # 4. Tính toán vị trí hiển thị (Position)
-            res = self.db.execute(
-                "SELECT MAX(position) as max_pos FROM sub_contents WHERE tutorial_id = ?", 
-                (t_id,)
-            ).fetchone()
-            # Xử lý trường hợp fetchone trả về dict hoặc Row object
-            max_p = res['max_pos'] if res and isinstance(res, dict) else (res[0] if res else None)
-            next_pos = (max_p + 1) if max_p is not None else 0
-
-            # 5. EXECUTE: Gán đúng cột - đúng vị trí
-            # Cột: (tutorial_id, sub_title, sub_folder, position, status, url, metadata)
             self.db.execute(
-                """INSERT INTO sub_contents 
-                   (tutorial_id, sub_title, sub_folder, position, status, url, metadata) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""", 
-                (
-                    t_id,           # 1
-                    sub_title,      # 2 
-                    sub_folder_name,# 3
-                    next_pos,       # 4
-                    "Chưa quay",    # 5 -> Cố định cột status là TEXT
-                    url,            # 6 -> Link nằm ở đây
-                    metadata_str    # 7
-                )
+                "INSERT INTO sub_contents (tutorial_id, sub_title, sub_folder, position, status, metadata) VALUES (?, ?, ?, ?, ?, ?)", 
+                (t_id, sub_title, sub_folder_name, next_pos, "Chưa quay", metadata_str)
             )
             
-            # 6. Tạo cấu trúc thư mục vật lý để chứa video/ảnh
+            # Tạo cấu trúc thư mục làm việc
             os.makedirs(full_sub_path, exist_ok=True)
-            for folder in ["raw", "outputs", "assets"]:
-                os.makedirs(os.path.join(full_sub_path, folder), exist_ok=True)
+            os.makedirs(os.path.join(full_sub_path, "raw"), exist_ok=True)
+            os.makedirs(os.path.join(full_sub_path, "outputs"), exist_ok=True)
             
             self.db.commit()
-            print(f"✅ Đã thêm Form mới: {sub_title}")
             return True
-
         except Exception as e:
             print(f"❌ Lỗi add_sub_content: {e}")
             traceback.print_exc()
             return False
-        
 
     def get_sub_contents(self, tutorial_id):
         """Lấy danh sách bài học, tự động parse metadata từ String sang Dict"""
         try:
-            # Dùng fetchall trực tiếp từ db engine để đảm bảo cursor không bị đóng
-            rows = self.db.fetchall(
+            rows = self.db.execute(
                 "SELECT * FROM sub_contents WHERE tutorial_id = ? ORDER BY position ASC", 
                 (tutorial_id,)
-            )
+            ).fetchall()
             
             results = []
             for row in rows:
                 item = dict(row)
-                
-                # Kiểm tra dữ liệu thô trước khi parse
-                raw_metadata = item.get('metadata')
-                
-                if raw_metadata and isinstance(raw_metadata, str):
+                # Parse metadata để AI có thể đọc trực tiếp như một Dictionary
+                if item.get('metadata'):
                     try:
-                        item['metadata'] = json.loads(raw_metadata)
-                    except Exception as json_err:
-                        print(f"⚠️ Không thể parse JSON cho ID {item.get('id')}: {json_err}")
-                        # Giữ nguyên bản gốc nếu lỗi parse
-                
+                        item['metadata'] = json.loads(item['metadata'])
+                    except:
+                        pass 
                 results.append(item)
-            
-            # DEBUG: In ra số lượng để Vũ kiểm tra trên console
-            # print(f"🔍 Đã lấy {len(results)} records cho Tutorial ID: {tutorial_id}")
             return results
-            
         except Exception as e:
             print(f"❌ Lỗi get_sub_contents: {e}")
-            import traceback
-            traceback.print_exc()
             return []
-        
-    def update_sub_content(self, sub_id, new_title=None, new_status=None, new_url=None, new_metadata=None):
-        """
-        Cập nhật toàn diện thông tin Form.
-        Tách bạch: Title, Status (Chưa quay/Đã quay), URL (Link), Metadata (Tri thức AI).
-        """
-        try:
-            # 1. Lấy dữ liệu cũ để giữ lại nếu các tham số truyền vào là None
-            current = self.db.execute("SELECT * FROM sub_contents WHERE id = ?", (sub_id,)).fetchone()
-            if not current: return False
-            current = dict(current)
-
-            final_title = new_title if new_title is not None else current['sub_title']
-            final_status = new_status if new_status is not None else current['status']
-            final_url = new_url if new_url is not None else current['url']
-            
-            # Xử lý metadata nếu truyền vào dạng dict
-            if new_metadata is not None:
-                if isinstance(new_metadata, (dict, list)):
-                    final_metadata = json.dumps(new_metadata, ensure_ascii=False)
-                else:
-                    final_metadata = new_metadata
-            else:
-                final_metadata = current['metadata']
-
-            self.db.execute(
-                "UPDATE sub_contents SET sub_title = ?, status = ?, url = ?, metadata = ? WHERE id = ?", 
-                (final_title, final_status, final_url, final_metadata, sub_id)
-            )
-            self.db.commit()
-            print(f"✅ Đã cập nhật tri thức cho Form ID: {sub_id}")
-            return True
-        except Exception as e:
-            print(f"❌ Lỗi update_sub_content: {e}")
-            return False
 
     def update_sub_content_metadata(self, sub_id, metadata):
-        """Hàm bổ trợ để chỉ cập nhật metadata (Dùng khi Scraper chạy lại)"""
-        return self.update_sub_content(sub_id, new_metadata=metadata)
+        """Cập nhật lại tri thức khi Scraper chạy lại"""
+        try:
+            if isinstance(metadata, (dict, list)):
+                metadata = json.dumps(metadata, ensure_ascii=False)
+            
+            self.db.execute("UPDATE sub_contents SET metadata = ? WHERE id = ?", (metadata, sub_id))
+            self.db.commit()
+            return True
+        except Exception as e:
+            print(f"❌ Lỗi update_sub_content_metadata: {e}")
+            return False
 
     def move_sub_content(self, sub_id, direction):
         """Hoán đổi thứ tự bài học"""
@@ -262,4 +192,72 @@ class StudioController:
             return True
         except Exception as e:
             print(f"❌ Lỗi delete_sub_content: {e}")
+            return False
+        
+    # -------------Thêm hàm cho Bot update dự án giaiphapvang ----------------
+    def update_sub_content(self, sub_id, new_title=None, new_status=None):
+        """
+        Cập nhật thông tin Form. 
+        Logic: Ưu tiên giữ lại URL trong cột status để AI không bị 'mất bản đồ'.
+        """
+        try:
+            # 1. Lấy dữ liệu hiện tại từ DB
+            current = self.db.execute(
+                "SELECT sub_title, status FROM sub_contents WHERE id = ?", 
+                (sub_id,)
+            ).fetchone()
+            
+            if not current:
+                print(f"⚠️ Không tìm thấy bản ghi id={sub_id}")
+                return False
+            
+            curr_title, curr_status = current
+            
+            # 2. Quyết định tiêu đề mới
+            final_title = new_title if new_title else curr_title
+            
+            # 3. Logic 'Bảo vệ URL' cho cột status:
+            # - Nếu new_status là URL (có http): Luôn cập nhật cái mới.
+            # - Nếu new_status là trạng thái chữ (như 'Đã quay'): 
+            #   Chỉ cập nhật nếu status cũ KHÔNG PHẢI là URL (đang là 'Chưa quay').
+            #   Nếu status cũ ĐANG LÀ URL, ta giữ nguyên URL để AI còn biết đường đi.
+            
+            final_status = curr_status # Mặc định giữ cũ
+            
+            if new_status:
+                # Kiểm tra xem status mới có phải là URL không
+                is_new_url = str(new_status).startswith('http')
+                # Kiểm tra xem status cũ có phải là URL không
+                is_curr_url = str(curr_status).startswith('http')
+                
+                if is_new_url:
+                    # Nếu là URL mới thì đè lên luôn (cập nhật link mới)
+                    final_status = new_status
+                else:
+                    # Nếu new_status là trạng thái chữ (ví dụ: 'Đã quay')
+                    # Vũ chỉ ghi đè nếu cái cũ chưa có URL (đang là 'Chưa quay')
+                    if not is_curr_url:
+                        final_status = new_status
+                    else:
+                        # Nếu cái cũ đã có URL rồi, Vũ có thể chọn: 
+                        # Hoặc giữ URL, hoặc kết hợp (Ví dụ: "URL|Đã quay")
+                        # Ở đây tôi khuyên Vũ nên giữ URL để AI diễn.
+                        print(f"ℹ️ Giữ lại URL cho {final_title}, không ghi đè trạng thái nghiệp vụ.")
+                        final_status = curr_status
+
+            # 4. Thực thi Update
+            self.db.execute(
+                "UPDATE sub_contents SET sub_title = ?, status = ? WHERE id = ?", 
+                (final_title, final_status, sub_id)
+            )
+            self.db.commit()
+            
+            # Log nhẹ để Vũ theo dõi
+            if final_status != curr_status:
+                print(f"✅ Đã cập nhật {final_title}: {curr_status} -> {final_status}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"❌ Lỗi update_sub_content: {e}")
             return False

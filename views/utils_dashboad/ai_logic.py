@@ -100,33 +100,38 @@ class AIHandler:
         {context}
 
         --- 📝 YÊU CẦU RIÊNG TỪ VŨ ---
-        {user_notes if user_notes else "Hướng dẫn chi tiết, giọng điệu hỗ trợ khách hàng, dùng thuật ngữ ngành vàng (như tuổi vàng, trọng lượng, tiền công...)"}
+        {user_notes if user_notes else "Hướng dẫn chi tiết, dùng thuật ngữ ngành vàng: tuổi vàng, trọng lượng, tiền công..."}
 
-        --- 🎯 CHIẾN THUẬT VIDEO (CHỐNG GIẬT LAG) ---
-        1. Click/Type: Luôn có 'duration' từ 0.7s đến 1.5s để chuột di chuyển mượt.
-        2. Highlight: Luôn 'highlight' hoặc 'glow' mục tiêu trước khi thực hiện hành động để người xem dễ theo dõi.
-        3. Logic: 
-           - Nếu nghiệp vụ là 'ADD' (Thêm mới): Hướng dẫn nhấn 'Tạo mới', điền các ô nhập liệu, rồi nhấn 'Lưu'.
-           - Nếu nghiệp vụ là 'VIEW' (Tra cứu): Hướng dẫn nhìn vào các cột dữ liệu và dùng bộ lọc.
-        4. Kết thúc: Bước cuối cùng BẮT BUỘC phải là hành động 'speak' nội dung Slogan: "{slogan}"
+        --- 🎯 CHIẾN THUẬT ĐẠO DIỄN (DÀNH CHO BOT PLAYWRIGHT) ---
+        1. LUÔN đi theo luồng: Speak (Dẫn nhập) -> Highlight (Gây chú ý) -> Click/Type (Hành động).
+        2. 'target': Phải là CSS Selector chính xác từ dữ liệu thật (Ví dụ: #btn-add, input[name='gold_weight']). 
+           - Nếu dữ liệu không có Selector rõ ràng, hãy dùng Text Selector của Playwright (Ví dụ: "text='Thêm mới'").
+        3. 'duration': Thời gian chờ hoặc di chuyển chuột (từ 0.8 đến 1.5 giây).
+        4. 'value': Dữ liệu giả định phù hợp với ngành vàng (Ví dụ: Nhập trọng lượng là '1.500', loại vàng '610').
 
-        --- 📤 ĐỊNH DẠNG JSON TRẢ VỀ (CHỈ JSON) ---
+        --- 📤 ĐỊNH DẠNG JSON TRẢ VỀ (BẮT BUỘC) ---
+        Trả về một mảng JSON các object. Mỗi object phải chứa:
+        - "action": Một trong các loại [speak, highlight, click, type, hover, wait].
+        - "target": CSS Selector hoặc Text Selector để Bot định vị phần tử.
+        - "text": Lời thoại cho giọng Hoài My (chỉ dùng cho action 'speak' hoặc kèm theo hành động).
+        - "value": Giá trị cần nhập (chỉ dùng cho action 'type').
+        - "duration": Thời gian thực hiện (giây).
+
+        Ví dụ cấu hình mẫu:
         [
             {{ 
                 "action": "speak", 
-                "text": "Chào mừng quý khách đến với hướng dẫn {form_name}..."
-            }},
-            {{ 
-                "action": "highlight", 
-                "target": "nút Tạo mới", 
-                "effect": "glow"
+                "text": "Chào mừng quý khách đến với hướng dẫn {form_name}. Đầu tiên hãy nhấn nút Thêm mới."
             }},
             {{ 
                 "action": "click", 
-                "target": "nút Tạo mới", 
-                "duration": 1.0
+                "target": "button:has-text('Thêm mới')", 
+                "duration": 1.2
             }}
         ]
+        
+        --- KẾT THÚC ---
+        Hành động cuối cùng luôn là "action": "speak" với slogan: "{slogan}"
         """
         return prompt
 
@@ -226,3 +231,46 @@ class AIHandler:
         
         # 4. Gọi Gemini và trả về kết quả
         return self.get_ai_script(prompt, model_name)
+    
+    def generate_bot_script(metadata, module_name, form_name):
+        "Hàm mẫu: Chuyển Metadata thành Kịch bản Đạo diễn"
+        script = []
+        
+        # 1. Bước chào sân (Dựa trên tên Module)
+        script.append({
+            "act": "wait", 
+            "speech": f"Chào bạn, Hoài My sẽ hướng dẫn bạn thao tác trên mục {form_name} của hệ thống."
+        })
+
+        # 2. Bước bấm nút "Tạo mới" (Lấy từ actions trong metadata)
+        # Giả sử Vũ đã cào được selector của nút này
+        script.append({
+            "act": "click",
+            "target": "#btn-add-new", # Hoặc selector Vũ lưu trong DB
+            "speech": "Đầu tiên, chúng ta nhấn vào nút Tạo mới để mở form nhập liệu."
+        })
+
+        # 3. Duyệt qua các form_fields để nhập liệu mẫu
+        for field in metadata.get('form_fields', []):
+            label = field.get('label')
+            f_type = field.get('type')
+            # Tìm selector dựa trên label hoặc name
+            selector = f"input[name='{field.get('name')}']" 
+            
+            if f_type == "text":
+                script.append({
+                    "act": "type",
+                    "target": selector,
+                    "val": f"Dữ liệu mẫu {label}",
+                    "speech": f"Tại ô {label}, bạn hãy nhập thông tin vào nhé."
+                })
+                
+        # 4. Bước chốt hạ (Nút Lưu)
+        script.append({
+            "act": "click",
+            "target": "#btn-save",
+            "speech": "Cuối cùng, nhấn Lưu để hoàn tất nghiệp vụ. Rất đơn giản phải không nào?"
+        })
+        
+        return script
+

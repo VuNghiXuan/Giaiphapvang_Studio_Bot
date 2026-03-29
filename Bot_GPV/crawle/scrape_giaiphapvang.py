@@ -137,7 +137,7 @@ class GiaiphapvangScraper:
     
 
     def update_module_details(self, project_name, module_name, module_url):
-        """Logic điều hướng để vét cạn các nút động"""
+        """Logic điều hướng để vét cạn các nút động và lấy URL thực tế"""
         results = {}
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=False, slow_mo=500) 
@@ -150,11 +150,15 @@ class GiaiphapvangScraper:
                     sub_links = self._get_sidebar_links(page)
                     
                     for link in sub_links:
+                        # Bỏ qua nếu là link trang chủ của module
                         if link['href'].strip('/') == module_url.strip('/'): continue
                         
                         print(f"🔍 Đang mổ xẻ: {link['text']}")
                         page.goto(link['href'], wait_until="networkidle")
                         
+                        # QUAN TRỌNG: Lấy URL thực tế sau khi trang đã load xong
+                        actual_form_url = page.url 
+
                         # Bước 1: Quét bề nổi (Trang danh sách)
                         structure = self._extract_page_structure(page)
 
@@ -168,7 +172,15 @@ class GiaiphapvangScraper:
                                 # Quét sâu trong Form
                                 deep_struct = self._extract_page_structure(page)
                                 structure['form_fields'] = deep_struct['form_fields']
-                                structure['actions'] = list(set(structure['actions'] + deep_struct['actions']))
+                                
+                                # Hợp nhất actions (danh sách nút bấm)
+                                # Lưu ý: Chuyển về set để tránh trùng lặp nếu action là string, 
+                                # hoặc xử lý riêng nếu action là object
+                                existing_action_labels = [a.get('label') if isinstance(a, dict) else a for a in structure['actions']]
+                                for action in deep_struct['actions']:
+                                    label = action.get('label') if isinstance(action, dict) else action
+                                    if label not in existing_action_labels:
+                                        structure['actions'].append(action)
                                 
                                 page.keyboard.press("Escape")
                                 page.wait_for_timeout(500)
@@ -185,13 +197,15 @@ class GiaiphapvangScraper:
                                 page.keyboard.press("Escape")
                         except: pass
 
-                        # Lưu kết quả
+                        # Lưu kết quả kèm theo URL xịn để thay thế "Chưa quay"
                         data_to_save = {
                             "module": module_name,
                             "form": link['text'],
+                            "url": actual_form_url,  # ĐÂY LÀ DÒNG MỚI THÊM
                             "structure": structure,
                             "updated_at": time.strftime("%Y-%m-%d %H:%M:%S")
                         }
+                        
                         results[link['text']] = data_to_save
                         self._save_step(project_name, module_name, link['text'], data_to_save)
                         
@@ -227,21 +241,27 @@ class GiaiphapvangScraper:
     def _extract_page_structure(self, page):
         """
         TRÌNH VÉT ĐA TẦNG: 
-        1. Vét cột bảng (Columns)
-        2. Vét nút bấm (Actions) - Nhận diện cả Icon-only
-        3. Vét trường nhập liệu (Form Fields) - Lấy cả Type & Placeholder
-        4. Vét định dạng xuất (Export formats) từ Menu đang mở
+        Trích xuất Metadata chi tiết để làm 'não' cho AI điều khiển Browser sau này.
         """
         try: 
-            # Đợi các thành phần UI chính xuất hiện
+            # Chờ một trong các thành phần chính xuất hiện
             page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, .MuiButton-root", timeout=5000)
-        except: pass
+        except: 
+            pass
         
         return page.evaluate('''() => {
             const getCleanText = (el) => {
                 if (!el) return "";
-                // Xử lý đặc biệt: lấy text, bỏ icon và các ký tự bắt buộc (*)
+                // Lấy dòng đầu tiên, xóa các ký tự đặc biệt thường gặp ở label/button
                 return el.innerText.split('\\n')[0].replace(/[\\*\\•\\○]/g, '').trim();
+            };
+
+            const getSelector = (el) => {
+                // Ưu tiên Name vì Name trong Form thường cố định hơn ID (MUI hay sinh ID ngẫu nhiên)
+                if (el.name) return `[name="${el.name}"]`;
+                // Nếu có ID và không phải ID tự sinh của MUI (thường bắt đầu bằng mui-)
+                if (el.id && !el.id.startsWith('mui-')) return `#${el.id}`;
+                return ""; 
             };
             
             const structure = {
@@ -252,80 +272,91 @@ class GiaiphapvangScraper:
                 export_formats: []
             };
 
-            // --- 1. VÉT CỘT BẢNG ---
+            // --- 1. VÉT CỘT BẢNG (Dữ liệu đầu ra) ---
             document.querySelectorAll('.MuiDataGrid-columnHeaderTitle').forEach(h => {
                 const txt = getCleanText(h);
                 if(txt && !structure.columns.includes(txt)) structure.columns.push(txt);
             });
 
-            // --- 2. XÁC ĐỊNH VÙNG ƯU TIÊN (Ưu tiên Form/Modal đang mở trước) ---
+            // Xác định khu vực ưu tiên: Nếu có Dialog/Drawer đang mở thì chỉ vét trong đó
             const activeOverlay = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"]');
             const searchArea = activeOverlay || document.querySelector('main') || document.body;
 
-            // --- 3. VÉT NÚT BẤM (Hỗ trợ Icon-only) ---
+            // --- 2. VÉT NÚT BẤM (Kèm Logic đoán Icon cho AI) ---
             searchArea.querySelectorAll('button, a, [role="button"]').forEach(b => {
-                // Không lấy nút trong Sidebar nếu đang quét vùng nội dung chính
-                if (!activeOverlay && (b.closest('nav') || b.closest('.MuiDrawer-root'))) return;
+                // Nếu không có overlay, bỏ qua các nút thuộc sidebar/nav để tránh rác
+                if (!activeOverlay && (b.closest('nav') || b.closest('[class*="sidebar"]'))) return;
 
                 let label = getCleanText(b) || b.getAttribute('aria-label') || b.title;
                 
-                // Thuật toán đoán nghĩa Icon nếu nút không có chữ (dành cho nút Sửa/Xóa/In)
+                // Logic đoán nút dựa trên Icon hoặc Class nếu Label trống
                 if (!label || label.length <= 1) {
                     const html = b.innerHTML.toLowerCase();
-                    if (html.includes('edit') || html.includes('pencil')) label = "Sửa";
-                    else if (html.includes('delete') || html.includes('trash')) label = "Xóa";
-                    else if (html.includes('print')) label = "In";
+                    const cls = b.className.toLowerCase();
+                    if (html.includes('edit') || cls.includes('edit')) label = "Sửa";
+                    else if (html.includes('delete') || html.includes('trash') || cls.includes('delete')) label = "Xóa";
+                    else if (html.includes('save') || cls.includes('save')) label = "Lưu";
                     else if (html.includes('add') || html.includes('plus')) label = "Thêm";
-                    else if (html.includes('save') || html.includes('check')) label = "Lưu";
-                    else if (html.includes('download') || html.includes('export')) label = "Xuất";
+                    else if (html.includes('download') || html.includes('export')) label = "Xuất file";
+                    else if (html.includes('print')) label = "In";
+                    else if (html.includes('close') || html.includes('cancel')) label = "Đóng";
                 }
 
-                if (label && label.length > 1 && !label.includes('Settings')) {
+                if (label && label.length > 1) {
+                    const btnData = {
+                        label: label,
+                        selector: getSelector(b) || `button:has-text("${label}")`,
+                        is_primary: b.classList.contains('MuiButton-containedPrimary') || false
+                    };
+
+                    // Phân loại: Nút thao tác trên từng dòng hay nút chức năng chung
                     if (b.closest('.MuiDataGrid-row')) {
-                        if (!structure.row_operations.includes(label)) structure.row_operations.push(label);
+                        if (!structure.row_operations.find(o => o.label === label)) 
+                            structure.row_operations.push(btnData);
                     } else {
-                        if (!structure.actions.includes(label)) structure.actions.push(label);
+                        if (!structure.actions.find(a => a.label === label)) 
+                            structure.actions.push(btnData);
                     }
                 }
             });
 
-            // --- 4. VÉT CHI TIẾT TRƯỜNG NHẬP LIỆU ---
-            searchArea.querySelectorAll('.MuiFormControl-root, .MuiTextField-root, .MuiBox-root').forEach(container => {
-                let labelTxt = "";
+            // --- 3. VÉT TRƯỜNG NHẬP LIỆU (Input, Select, AutoComplete) ---
+            searchArea.querySelectorAll('.MuiFormControl-root, .MuiTextField-root, .MuiInputBase-root').forEach(container => {
                 let inputEl = container.querySelector('input, textarea, select, [role="combobox"]');
-                const labelEl = container.querySelector('label, .MuiFormLabel-root');
+                if (!inputEl) return;
 
-                if (labelEl) {
-                    labelTxt = getCleanText(labelEl);
-                } else if (inputEl && inputEl.placeholder) {
-                    labelTxt = inputEl.placeholder;
-                }
+                const labelEl = container.querySelector('label, .MuiFormLabel-root');
+                let labelTxt = labelEl ? getCleanText(labelEl) : (inputEl.placeholder || inputEl.getAttribute('aria-label') || "");
 
                 if (labelTxt && labelTxt.length > 1) {
                     if (!structure.form_fields.find(f => f.label === labelTxt)) {
                         structure.form_fields.push({
                             label: labelTxt,
-                            type: inputEl ? (inputEl.type || inputEl.getAttribute('role') || 'text') : 'text',
-                            placeholder: inputEl ? (inputEl.placeholder || "") : ""
+                            type: inputEl.type || inputEl.getAttribute('role') || 'text',
+                            selector: getSelector(inputEl) || `input[placeholder*="${labelTxt}"]`,
+                            required: container.innerHTML.includes('Mui-required') || inputEl.required,
+                            placeholder: inputEl.placeholder || ""
                         });
                     }
                 }
             });
 
-            // --- 5. VÉT MENU XUẤT FILE (Nếu đang bấm nút Xuất) ---
-            document.querySelectorAll('.MuiMenuItem-root, [role="menuitem"]').forEach(item => {
+            // --- 4. VÉT ĐỊNH DẠNG XUẤT FILE (Khi menu Export đang mở) ---
+            document.querySelectorAll('.MuiMenuItem-root, [role="menuitem"], .MuiButtonBase-root').forEach(item => {
                 const itemTxt = item.innerText.trim();
-                const keywords = ['Excel', 'CSV', 'PDF', 'In', 'Export', 'Tải'];
-                if (keywords.some(k => itemTxt.includes(k))) {
-                    if (!structure.export_formats.includes(itemTxt)) {
-                        structure.export_formats.push(itemTxt);
+                const formats = ['Excel', 'CSV', 'PDF', 'In ấn', 'Download'];
+                if (formats.some(k => itemTxt.includes(k))) {
+                    if (!structure.export_formats.find(e => e.label === itemTxt)) {
+                        structure.export_formats.push({
+                            label: itemTxt,
+                            selector: `text="${itemTxt}"`
+                        });
                     }
                 }
             });
 
             return structure;
         }''')
-    
 
     def save_and_compress_screenshot(self, page, save_path):
         # 1. Chụp ảnh tạm
@@ -345,47 +376,48 @@ class GiaiphapvangScraper:
     
     def sync_deep_scan(self, ctrl, project_id, project_folder, module_name, module_url):
         """
-        Quy trình Đào sâu vét cạn & Đồng bộ vào DB
+        Quy trình Đào sâu vét cạn: Cập nhật URL xịn và Metadata vào đúng cột.
         """
-        # 1. Chạy trực tiếp method trong cùng class
-        # Lưu ý: self ở đây chính là scraper
+        # Gọi Scraper để lấy cấu trúc chi tiết (Metadata)
         deep_data = self.update_module_details(project_folder, module_name, module_url)
         
         if not deep_data:
-            print(f"⚠️ Không lấy được dữ liệu cho Module: {module_name}")
+            print(f"⚠️ Không lấy được dữ liệu chi tiết cho Module: {module_name}")
             return False
 
-        # 2. Lấy danh sách sub_contents hiện có từ DB
+        # Lấy danh sách hiện có để so khớp
         existing_subs = ctrl.get_sub_contents(project_id)
         
+        success_count = 0
         for form_name, f_data in deep_data.items():
-            # Chuẩn hóa tiêu đề để so khớp (Ví dụ: "Danh mục|Khách hàng")
             full_title = f"{module_name}|{form_name}"
-            
-            # Tìm xem đã tồn tại trong DB chưa
+            # Tìm xem form này đã có trong DB chưa
             existing_item = next((s for s in existing_subs if s['sub_title'] == full_title), None)
             
             metadata_json = f_data.get('structure', {})
-            form_url = f_data.get('url', module_url) # Lấy URL cụ thể của form nếu có
+            form_url = f_data.get('url') or module_url 
 
             if existing_item:
-                # CẬP NHẬT: Đã có ID thì chỉ update kiến thức (metadata)
-                print(f"🔄 Cập nhật tri thức mới cho: {full_title}")
-                
-                # Update Metadata (quan trọng nhất cho AI)
-                ctrl.update_sub_content_metadata(existing_item['id'], metadata_json)
-                
-                # Update URL hoặc thông tin phụ (nếu hàm update_sub_content hỗ trợ)
-                # Vũ kiểm tra lại các tham số truyền vào hàm này của mình nhé
-                ctrl.update_sub_content(existing_item['id'], new_title=full_title, new_status=form_url)
+                # CẬP NHẬT: Tách biệt URL và Metadata, giữ nguyên Status
+                print(f"🔄 Cập nhật Metadata cho: {full_title}")
+                res = ctrl.update_sub_content(
+                    sub_id=existing_item['id'], 
+                    new_url=form_url, 
+                    new_metadata=metadata_json,
+                    new_status=existing_item.get('status') # Quan trọng: Giữ lại status cũ
+                )
             else:
-                # THÊM MỚI: Form hoàn toàn mới chưa có trong DB
-                print(f"✨ Thêm mới Form vào DB: {full_title}")
-                ctrl.add_sub_content(
+                # THÊM MỚI: Nếu là Form mới phát hiện thêm
+                print(f"✨ Thêm mới Form: {full_title}")
+                res = ctrl.add_sub_content(
                     t_id=project_id,
                     sub_title=full_title,
                     parent_folder=project_folder,
-                    metadata=metadata_json # Lưu luôn tri thức khi thêm mới
+                    metadata=metadata_json,
+                    url=form_url
                 )
-                
+            
+            if res: success_count += 1
+            
+        print(f"📊 Hoàn tất Deep Scan: {success_count}/{len(deep_data)} forms đã được xử lý.")
         return True

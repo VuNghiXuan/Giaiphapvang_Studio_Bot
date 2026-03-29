@@ -6,11 +6,11 @@ from ..utils_dashboad.utils import get_status_info, render_status_badge
 
 class GPVComponent:
     @staticmethod
+    @staticmethod
     def render_item_rows(ctrl, p, items, ai_handler, project_name):
         """
         Hàm chính để render danh sách các Form với màu sắc và dữ liệu Preview
         """
-        # 1. Định nghĩa bảng màu trạng thái chuyên nghiệp
         STATUS_STYLES = {
             "Chưa quay": {"color": "#808080", "bg": "#f8f9fa", "border": "#dee2e6"},
             "Đã quay": {"color": "#007bff", "bg": "#e7f3ff", "border": "#b3d7ff"},
@@ -19,18 +19,14 @@ class GPVComponent:
         status_options = list(STATUS_STYLES.keys())
         
         for idx, s in enumerate(items):
-            # Lấy thông trạng thái thực tế dựa trên folder vật lý
             sub_path = os.path.join(Config.BASE_STORAGE, p['folder_name'], s['sub_folder'])
             current_status = get_status_info(sub_path, s.get('status'))
             
-            # Tách tên Module và Form từ sub_title (VD: "Danh mục|Khách hàng")
             parts = s['sub_title'].split('|')
             mod_name = parts[0]
             form_name = parts[-1]
-
             style = STATUS_STYLES.get(current_status, STATUS_STYLES["Chưa quay"])
 
-            # 2. Render Container với hiệu ứng vạch màu bên trái (Visual Cue)
             with st.container(border=True):
                 st.markdown(f"""
                     <style>
@@ -44,25 +40,44 @@ class GPVComponent:
                 col_info, col_status, col_actions = st.columns([3, 1.2, 2.3])
                 
                 with col_info:
-                    # Tiêu đề Form & Badge trạng thái
-                    st.markdown(f"**{form_name}**", help=f"Đường dẫn: {s.get('status', 'N/A')}")
+                    form_url = s.get('url', 'N/A')
+                    st.markdown(f"**{form_name}**", help=f"🔗 Link: {form_url}")
                     render_status_badge(current_status) 
-                    st.caption(f"📁 {s['sub_folder']} | 📦 {mod_name}") 
+                    st.caption(f"📁 {s['sub_folder']} | 📦 {mod_name}")
                     
-                    # --- HIỂN THỊ TRÍ THỨC HỆ THỐNG (VÉT ĐƯỢC) ---
-                    # Ưu tiên lấy từ metadata (DB) nếu render_gpv_logic đã bóc sẵn
-                    p_fields = s.get('preview_fields', "Chưa có dữ liệu")
-                    p_actions = s.get('preview_actions', "")
-                    
-                    if "Chưa có dữ liệu" not in p_fields:
+                    # --- XỬ LÝ TRÍ THỨC TỪ METADATA ---
+                    meta = s.get('metadata')
+                    fields_list = []
+                    actions_list = []
+
+                    if isinstance(meta, dict):
+                        # Bóc tách Fields
+                        fields_raw = meta.get('form_fields', [])
+                        fields_list = [f.get('label') for f in fields_raw if isinstance(f, dict) and f.get('label')]
+                        
+                        # Bóc tách Actions (Xử lý cả String và Dict)
+                        actions_raw = meta.get('actions', [])
+                        for a in actions_raw:
+                            if isinstance(a, dict):
+                                actions_list.append(a.get('label', 'Nút không tên'))
+                            else:
+                                actions_list.append(str(a))
+
+                    # Hiển thị Fields Preview
+                    if fields_list:
+                        p_fields = ", ".join(fields_list[:5]) + ("..." if len(fields_list) > 5 else "")
                         st.markdown(f"""
                             <div style='font-size: 0.75rem; color: #444; background: white; 
-                                        padding: 6px; border-radius: 4px; border: 1px solid #ddd;'>
+                                         padding: 6px; border-radius: 4px; border: 1px solid #ddd;'>
                                 📝 <b>Các trường:</b> {p_fields}
                             </div>
                         """, unsafe_allow_html=True)
-                    
-                    if p_actions:
+                    else:
+                        st.info("💡 Form này chưa có dữ liệu quét chi tiết.")
+
+                    # Hiển thị Actions Preview (Dùng join an toàn)
+                    if actions_list:
+                        p_actions = ", ".join(actions_list)
                         st.markdown(f"""
                             <div style='font-size: 0.75rem; color: #004d40; font-weight: 500; margin-top: 4px;'>
                                 ⚡ <b>Thao tác:</b> {p_actions}
@@ -74,43 +89,91 @@ class GPVComponent:
                     GPVComponent.render_status_selector(ctrl, s, current_status, status_options)
 
                 with col_actions:
-                    st.write("") # Spacer để căn giữa nút bấm
+                    st.write("") 
                     c_man, c_auto, c_opt = st.columns([1, 1, 1])
-                    
-                    # Nút vào Studio quay tay
                     if c_man.button("🎥", key=f"m_{s['id']}", help="Quay Studio thủ công", use_container_width=True):
                         GPVComponent.navigate_to_studio(p, s, "Quay thủ công")
-
-                    # Nút AI Popover - Trung tâm điều khiển kịch bản
                     with c_auto.popover("🤖", help="AI soạn kịch bản tự động", use_container_width=True):
                         GPVComponent.render_ai_config_panel(p, s, project_name, mod_name, form_name, ai_handler)
-
-                    # Nút Cài đặt phụ (Xóa, Di chuyển)
                     with c_opt.popover("⚙️", use_container_width=True):
                         GPVComponent.render_extra_options(ctrl, s, idx, len(items), p)
 
+    
     @staticmethod
     def render_ai_config_panel(p, s, project_name, mod_name, form_name, ai_handler):
-        """Bảng cấu hình AI: Sử dụng tri thức từ DB/JSON để soạn kịch bản"""
+        """Bảng cấu hình AI: Sử dụng tri thức từ DB để soạn kịch bản"""
         st.subheader(f"🤖 AI Studio: {form_name}")
         
-        # 1. Lấy ngữ cảnh từ tri thức đã vét (Hàm get_form_knowledge của Vũ)
-        form_context = ai_handler.get_form_knowledge(p['folder_name'], mod_name, form_name)
-        
-        if "⚠️" in form_context:
-            st.warning("Form này chưa quét Cấp 2. AI sẽ hoạt động dựa trên phán đoán (độ chính xác thấp).")
+        # --- 1. XỬ LÝ TRI THỨC (CONTEXT) TỪ DB METADATA ---
+        meta = s.get('metadata')
+        has_deep_data = False
+        raw_context = ""
+
+        if isinstance(meta, dict) and meta.get('form_fields'):
+            has_deep_data = True
+            fields = meta.get('form_fields', [])
+            actions_raw = meta.get('actions', [])
+            
+            raw_context = f"DỮ LIỆU THỰC TẾ TỪ HỆ THỐNG (FORM: {form_name}):\n"
+            raw_context += f"- Link: {s.get('url', 'N/A')}\n"
+            raw_context += "- Các trường dữ liệu tìm thấy:\n"
+            
+            for f in fields:
+                if isinstance(f, dict):
+                    req = "(Bắt buộc)" if f.get('required') else ""
+                    label = f.get('label', 'Không tên')
+                    f_type = f.get('type', 'text')
+                    sel = f.get('selector', '')
+                    raw_context += f"  + {label} (Loại: {f_type}, Selector: {sel}) {req}\n"
+            
+            # --- FIX LỖI JOIN TẠI ĐÂY ---
+            cleaned_actions = []
+            for a in actions_raw:
+                if isinstance(a, dict):
+                    # Nếu là dict, lấy label hoặc selector làm định danh
+                    cleaned_actions.append(a.get('label', a.get('selector', 'Nút')))
+                else:
+                    cleaned_actions.append(str(a))
+            
+            if cleaned_actions:
+                raw_context += f"- Thao tác khả dụng: {', '.join(cleaned_actions)}\n"
         else:
-            st.success("✅ Tri thức hệ thống đã sẵn sàng.")
-
-        col_brain, col_voice = st.columns(2)
-        selected_model = col_brain.selectbox("Bộ não AI:", ["gemini-2.0-flash", "gemini-1.5-pro"], key=f"mdl_{s['id']}")
-        selected_voice = col_voice.selectbox("Giọng đọc:", ["Ban Mai (Nữ)", "Minh Quang (Nam)"], key=f"voc_{s['id']}")
+            raw_context = ai_handler.get_form_knowledge(p['folder_name'], mod_name, form_name)
         
-        # Cho phép Vũ xem/sửa dữ liệu mà AI sẽ đọc
-        with st.expander("📄 Xem tri thức AI sẽ đọc", expanded=False):
-            form_context = st.text_area("Context gửi AI:", value=form_context, height=250, key=f"raw_{s['id']}")
+        if not has_deep_data and "⚠️" in raw_context:
+            st.warning("⚠️ Form này chưa quét Cấp 2. AI sẽ hoạt động dựa trên phán đoán chung.")
+        else:
+            st.success("✅ Tri thức hệ thống (Metadata DB) đã sẵn sàng.")
 
-        # Cấu hình nghiệp vụ cho kịch bản
+        # --- 2. CẤU HÌNH BỘ NÃO & GIỌNG ĐỌC ---
+        col_brain, col_voice = st.columns(2)
+        selected_model = col_brain.selectbox(
+            "Bộ não AI:", 
+            ["gemini-2.0-flash", "gemini-1.5-pro"], 
+            key=f"mdl_{s['id']}"
+        )
+        
+        voice_options = {
+            "Hoài My (Nữ - Neural)": "vi-VN-HoaiMyNeural",
+            "Nam Minh (Nam - Neural)": "vi-VN-NamMinhNeural"
+        }
+        
+        selected_voice_label = col_voice.selectbox(
+            "Giọng đọc (Edge-TTS):", 
+            options=list(voice_options.keys()), 
+            key=f"voc_{s['id']}"
+        )
+        selected_voice_code = voice_options[selected_voice_label]
+        
+        with st.expander("📄 Xem/Sửa tri thức AI sẽ đọc", expanded=False):
+            final_context = st.text_area(
+                "Nội dung Context:", 
+                value=raw_context, 
+                height=250, 
+                key=f"raw_{s['id']}"
+            )
+
+        # --- 3. CẤU HÌNH NGHIỆP VỤ ---
         scenarios = st.multiselect(
             "Mục tiêu video:", 
             [opt['id'] for opt in Config.AI_SCENARIOS], 
@@ -119,41 +182,64 @@ class GPVComponent:
             key=f"sc_{s['id']}"
         )
         
-        notes = st.text_area("Vũ muốn AI lưu ý gì thêm?", placeholder="VD: Nhấn mạnh vào cách nhập tiền công...", height=80, key=f"nt_{s['id']}")
-        slogan = st.text_input("Slogan thương hiệu:", value=Config.DEFAULT_SLOGAN, key=f"slo_{s['id']}")
+        notes = st.text_area(
+            "Vũ muốn AI lưu ý gì thêm?", 
+            placeholder="VD: Nhấn mạnh vào cách nhập mã số thuế...", 
+            height=80, 
+            key=f"nt_{s['id']}"
+        )
+        
+        slogan = st.text_input(
+            "Slogan thương hiệu:", 
+            value=Config.DEFAULT_SLOGAN, 
+            key=f"slo_{s['id']}"
+        )
 
+        # --- 4. NÚT CHẠY AI ---
         if st.button("🚀 BẮT ĐẦU SOẠN KỊCH BẢN", type="primary", use_container_width=True, key=f"run_{s['id']}"):
+            if not final_context.strip():
+                st.error("Lỗi: Context trống, AI không thể lập kịch bản.")
+                return
+
             with st.spinner("AI đang 'nuốt' dữ liệu và viết kịch bản..."):
                 ai_config = {
                     "scenarios": scenarios, 
                     "notes": notes, 
-                    "slogan": slogan
+                    "slogan": slogan,
+                    "voice": selected_voice_code 
                 }
-                # 2. Tạo Prompt và gọi API Gemini
-                prompt = ai_handler.generate_ai_prompt(mod_name, form_name, ai_config, form_context)
+                
+                prompt = ai_handler.generate_ai_prompt(mod_name, form_name, ai_config, final_context)
                 steps = ai_handler.get_ai_script(prompt, selected_model)
                 
                 if steps:
                     st.session_state.current_steps = steps
-                    st.session_state.selected_voice = selected_voice
-                    # Chuyển sang View Studio để xem AI diễn xuất
+                    st.session_state.selected_voice = selected_voice_code 
+                    st.session_state.target_url = s.get('url', Config.TARGET_DOMAIN)
                     GPVComponent.navigate_to_studio(p, s, "Quay tự động 🤖")
                 else:
-                    st.error("AI không trả về kịch bản. Kiểm tra lại API Key hoặc Context.")
+                    st.error("AI không trả về kịch bản. Kiểm tra lại API Key hoặc nội dung Context.")
 
     @staticmethod
     def render_status_selector(ctrl, s, current_status, options):
-        """Hàm cập nhật trạng thái nghiệp vụ nhanh"""
+        """Cập nhật trạng thái 'Chưa quay/Đã quay' vào DB"""
+        # Tìm index của status hiện tại trong list options
+        try:
+            current_idx = options.index(current_status)
+        except ValueError:
+            current_idx = 0
+
         new_st = st.selectbox(
             "ST_Select", options, 
-            index=options.index(current_status) if current_status in options else 0, 
+            index=current_idx, 
             key=f"st_{s['id']}", 
             label_visibility="collapsed"
         )
-        # Chỉ cập nhật nếu user thay đổi thực sự
-        if new_st != s.get('status'): 
-            ctrl.update_sub_content(s['id'], new_status=new_st)
-            st.rerun()
+
+        # CHỖ CẦN SỬA: Chỉ update status, giữ nguyên các cột khác
+        if new_st != current_status: 
+            if ctrl.update_sub_content(s['id'], new_status=new_st):
+                st.rerun()
 
     @staticmethod
     def render_extra_options(ctrl, s, idx, total, p):

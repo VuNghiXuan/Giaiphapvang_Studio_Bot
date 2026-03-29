@@ -137,7 +137,11 @@ def render_gpv_forms(ctrl, p, modul_name):
             
             btns = metadata.get('actions', [])
             imp = [b for b in btns if any(w in b for w in ["Lưu", "Thêm", "Xuất", "In"])]
-            sub['preview_actions'] = "⚡ " + ", ".join(imp[:3] if imp else btns[:3])
+            # sub['preview_actions'] = "⚡ " + ", ".join(imp[:3] if imp else btns[:3])
+
+            source_list = imp[:3] if imp else btns[:3]
+            sub['preview_actions'] = "⚡ " + ", ".join([str(item['label']) for item in source_list if 'label' in item])
+
         else:
             sub['preview_fields'] = "Chưa có tri thức"
             sub['preview_actions'] = ""
