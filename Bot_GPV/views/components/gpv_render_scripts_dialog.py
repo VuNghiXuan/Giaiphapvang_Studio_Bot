@@ -3,7 +3,7 @@ import os
 import json
 from pathlib import Path
 from config import Config
-from ..utils_dashboad.video_engine import AutoVideoEngine
+from ..utils_dashboad.auto_video_engine import AutoVideoEngine
 import asyncio
 
 class ScriptDialog:
