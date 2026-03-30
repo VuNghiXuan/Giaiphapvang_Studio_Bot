@@ -4,7 +4,7 @@ import json
 from Bot_GPV.crawle.scrape_giaiphapvang import GiaiphapvangScraper
 from Bot_GPV.core.gpv_ai_logic_knowledge import AIScripts
 # from Bot_GPV.views.components.gpv_component import GPVComponent
-from Bot_GPV.views.components.gpv_component import GPVComponent
+from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
 from config import Config
 
 # Khởi tạo bộ não AI
@@ -173,7 +173,7 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
     
     # GỌI COMPONENT HIỂN THỊ
     if display_data:
-        gp_component = GPVComponent() 
+        gp_component = RenderForm() 
         # Đảm bảo truyền đủ project_folder để AI/Hệ thống biết đường dẫn lưu file
         gp_component.render_item_rows(ctrl, p, display_data, ai_script, project_folder)
     else:

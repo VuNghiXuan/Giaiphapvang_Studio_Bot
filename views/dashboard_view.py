@@ -3,10 +3,10 @@ import os
 from config import Config
 # Import logic điều hướng từ gpv_handler
 # from .utils_dashboad.gpv_render_form import render_gpv_logic, render_gpv_forms, ai_script
-from Bot_GPV.views.utils_dashboad.gpv_render_form import ai_script, render_gpv_logic, render_gpv_forms
+from Bot_GPV.views.components.gpv_render_modules_and_form import ai_script, render_gpv_logic, render_gpv_forms
 # Import class giao diện từ components
 # from .components.gpv_component import GPVComponent
-from Bot_GPV.views.components.gpv_component import GPVComponent
+from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
 
 # --- 1. HÀM RENDER CHO DỰ ÁN THƯỜNG ---
 def render_normal_logic(ctrl, p, ai_script): # Vũ nhớ check xem đã nhận ai_script ở đầu hàm chưa nhé
@@ -43,7 +43,7 @@ def render_normal_logic(ctrl, p, ai_script): # Vũ nhớ check xem đã nhận a
     else:
         # GỌI TỪ CLASS COMPONENT: Vẽ từng dòng video (🎥, 🤖, ⚙️)
         # Đảm bảo ai_script đã được truyền vào hàm render_normal_logic
-        GPVComponent.render_item_rows(ctrl, p, display_subs, ai_script)
+        RenderForm.render_item_rows(ctrl, p, display_subs, ai_script)
 
 # --- 2. HÀM CHÍNH ĐIỀU HƯỚNG DASHBOARD ---
 def render_dashboard(ctrl):

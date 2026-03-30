@@ -133,28 +133,100 @@ class AIManager:
 
         return final_segments
 
+    # def _call_ai_api(self, prompt):
+    #     """Hàm gọi API dùng chung cho Groq/Gemini/Ollama"""
+    #     provider = self.provider.lower()
+    #     try:
+    #         if provider == "groq":
+    #             client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+    #             completion = client.chat.completions.create(
+    #                 messages=[{"role": "user", "content": prompt}],
+    #                 model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+    #                 temperature=0.1
+    #             )
+    #             return completion.choices[0].message.content
+    #         elif provider == "gemini":
+    #             client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+    #             response = client.models.generate_content(
+    #                 model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+    #                 contents=prompt
+    #             )
+    #             return response.text
+    #     except Exception as e:
+    #         print(f"❌ API Error ({provider}): {e}")
+    #     return ""
+
+        
+
     def _call_ai_api(self, prompt):
-        """Hàm gọi API dùng chung cho Groq/Gemini/Ollama"""
-        provider = self.provider.lower()
+        """
+        Hàm gọi API dùng chung cho Groq/Gemini/Ollama.
+        Đã tách biệt logic để tránh gửi nhầm model Ollama lên Server Cloud.
+        """
+        # Lấy provider từ config hoặc từ tham số truyền vào, mặc định là groq
+        provider = getattr(self, 'provider', os.getenv("DEFAULT_PROVIDER", "groq")).lower()
+        
         try:
+            # --- 1. XỬ LÝ GROQ ---
             if provider == "groq":
-                client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+                api_key = os.getenv("GROQ_API_KEY")
+                if not api_key:
+                    return "❌ Lỗi: Thiếu GROQ_API_KEY trong file .env"
+                    
+                client = Groq(api_key=api_key)
+                model_name = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+                
                 completion = client.chat.completions.create(
                     messages=[{"role": "user", "content": prompt}],
-                    model=os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile"),
+                    model=model_name,
                     temperature=0.1
                 )
                 return completion.choices[0].message.content
+
+            # --- 2. XỬ LÝ GEMINI ---
             elif provider == "gemini":
-                client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+                api_key = os.getenv("GOOGLE_API_KEY")
+                if not api_key:
+                    return "❌ Lỗi: Thiếu GOOGLE_API_KEY trong file .env"
+                
+                # Sử dụng thư viện Google GenAI mới nhất
+                client = genai.Client(api_key=api_key)
+                model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+                
                 response = client.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                    model=model_name,
                     contents=prompt
                 )
                 return response.text
+
+            # --- 3. XỬ LÝ OLLAMA (Local) ---
+            elif provider == "ollama":
+                base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+                model_name = os.getenv("OLLAMA_MODEL", "qwen2.5:7b")
+                
+                # Gọi trực tiếp qua API HTTP của Ollama để tránh xung đột thư viện Cloud
+                url = f"{base_url}/api/generate"
+                payload = {
+                    "model": model_name,
+                    "prompt": prompt,
+                    "stream": False, # Trả về 1 lần duy nhất cho dễ xử lý JSON
+                    "options": {
+                        "temperature": 0.1
+                    }
+                }
+                
+                response = requests.post(url, json=payload, timeout=60)
+                response.raise_for_status() # Kiểm tra nếu Ollama chưa bật (Lỗi 500/404)
+                
+                return response.json().get("response", "")
+
+        except requests.exceptions.ConnectionError:
+            print(f"❌ Lỗi: Không thể kết nối tới Ollama. Vũ đã chạy 'ollama serve' chưa?")
         except Exception as e:
-            print(f"❌ API Error ({provider}): {e}")
+            print(f"❌ API Error ({provider}): {str(e)}")
+            
         return ""
+
 
     async def _make_audio_clips(self, script_segments, voice_id=None):
         """Tạo file âm thanh từ lời thoại đã sửa"""

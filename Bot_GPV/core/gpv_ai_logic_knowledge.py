@@ -5,6 +5,7 @@ import re
 from google import genai
 from google.genai import types
 from config import Config
+import requests
 
 class AIScripts:
     def __init__(self):
@@ -27,7 +28,6 @@ class AIScripts:
         QUAN TRỌNG: Ưu tiên lấy 'selector' để Bot Automation có thể tương tác chính xác.
         Giữ nguyên logic trả về chuỗi để không làm gãy các file gọi hàm này.
         """
-        import json
         
         print(f"{self.bot_editor}: Đang 'mổ xẻ' tri thức nghiệp vụ cho Đạo diễn Vũ...")
         
@@ -86,7 +86,7 @@ class AIScripts:
 
         # --- LỚP 5: TỔNG HỢP NGỮ CẢNH (DẠNG JSON CHO AI HIỂU PHÂN CẤP) ---
         context_data = {
-            "system": "Ứng Dụng Vàng (HTJ)",
+            "system": "Ứng Dụng Vàng",
             "module_path": sub_content_item.get('sub_title', 'N/A'),
             "url": sub_content_item.get('url', ''),
             "interface_specs": {
@@ -159,54 +159,96 @@ class AIScripts:
 
     # =================================================================
     # VAI TRÒ 3: BOT DIỄN VIÊN (Gemini Execution)
-    # =================================================================
-    def get_ai_script(self, prompt, model_name="gemini-1.5-flash"):
-        """ [Bot Diễn Viên] - Kết nối bộ não Gemini để 'diễn' ra JSON. """
-        print(f"{self.bot_actor}: Đang 'nhập vai' với model: {model_name}...")
+    # =================================================================  
+
+    def get_ai_script(self, prompt, model="gemini-1.5-flash", provider="Gemini"):
+        """ [Bot Diễn Viên] - Đã được gọt dũa để xử lý JSON siêu chuẩn. """
+
+        print(f"\n--- [NỘI DUNG BỨC THƯ GỬI ĐI] ---\n{prompt}\n--- [HẾT BỨC THƯ] ---\n")
+        
+        provider_node = provider.lower()
+        print(f"{self.bot_actor}: Đang 'nhập vai' với {provider} (Model: {model})...")
+        
         try:
-            api_key = os.getenv("GOOGLE_API_KEY") or Config.GEMINI_API_KEY
-            
-            # Khởi tạo client với cấu hình tường minh
-            # Nếu Vũ dùng API Key từ Google AI Studio (không phải Google Cloud Vertex AI)
-            client = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
-            
-            # Kiểm tra và làm sạch tên model (tránh trùng lặp models/models/)
-            clean_model_name = model_name.replace("models/", "")
-            
-            response = client.models.generate_content(
-                model=clean_model_name, 
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.7 
+            raw_text = ""
+
+            # --- NHÁNH 1: GOOGLE GEMINI ---
+            if provider_node == "gemini":
+                api_key = os.getenv("GOOGLE_API_KEY") or Config.GEMINI_API_KEY
+                client = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
+                clean_model_name = model.replace("models/", "")
+                
+                response = client.models.generate_content(
+                    model=clean_model_name, 
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json", 
+                        temperature=0.2 
+                    )
                 )
-            )
+                raw_text = response.text
+
+            # --- NHÁNH 2: OLLAMA (LOCAL) ---
+            elif provider_node == "ollama":
+                base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+                payload = {
+                    "model": model, 
+                    "prompt": prompt,
+                    "stream": False,
+                    "format": "json" 
+                }
+                response = requests.post(f"{base_url}/api/generate", json=payload, timeout=180)
+                response.raise_for_status()
+                raw_text = response.json().get("response", "")
+
+            # --- NHÁNH 3: GROQ ---
+            elif provider_node == "groq":
+                from groq import Groq
+                client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+                completion = client.chat.completions.create(
+                    messages=[{"role": "user", "content": prompt}],
+                    model=model,
+                    temperature=0.1,
+                    response_format={"type": "json_object"}
+                )
+                raw_text = completion.choices[0].message.content
+
+            # =========================================================
+            # LỚP GỌT DŨA JSON (CLEANING LAYER)
+            # =========================================================
+            if not raw_text: return []
+
+            content = raw_text.strip()
             
-            # Kiểm tra dữ liệu trả về trước khi parse
-            if not response or not response.text:
-                print(f"⚠️ {self.bot_actor}: Gemini không trả về dữ liệu văn bản.")
-                return []
-            
-            # Bóc tách JSON an toàn hơn
+            # 1. Khử Markdown và trích xuất JSON bằng Regex chuẩn
+            # Tìm từ dấu [ hoặc { đầu tiên đến dấu ] hoặc } cuối cùng
+            json_match = re.search(r"([\[\{][\s\S]*[\]\}])", content)
+            if json_match:
+                content = json_match.group(1)
+
+            # 2. Xử lý dấu phẩy thừa (Trailing Commas)
+            content = re.sub(r",\s*([\]\}])", r"\1", content)
+
+            # 3. Chuyển đổi thành List dữ liệu
             try:
-                # Đôi khi AI trả về markdown ```json ... ```, dùng re hoặc strip để lấy lõi
-                raw_text = response.text.strip()
-                if "```json" in raw_text:
-                    raw_text = raw_text.split("```json")[1].split("```")[0].strip()
-                elif "```" in raw_text:
-                    raw_text = raw_text.split("```")[1].split("```")[0].strip()
-                
-                steps = json.loads(raw_text)
-                return steps if isinstance(steps, list) else []
+                data = json.loads(content)
+                if isinstance(data, dict):
+                    # Nếu AI bọc trong object, tìm các key phổ biến
+                    for key in ["steps", "actions", "script", "data"]:
+                        if key in data and isinstance(data[key], list):
+                            return data[key]
+                    return [data]
+                return data if isinstance(data, list) else []
             except json.JSONDecodeError:
-                print(f"❌ {self.bot_actor}: Lỗi giải mã kịch bản JSON.")
+                print(f"❌ Lỗi: AI phản hồi JSON sai định dạng.")
+                with open("debug_raw_ai_error.txt", "w", encoding="utf-8") as f:
+                    f.write(raw_text)
                 return []
-                
+
         except Exception as e:
-            # In ra log chi tiết để Vũ debug nhanh
-            print(f"🚨 [LỖI CHI TIẾT]: {str(e)}") 
-            st.error(f"❌ {self.bot_actor} gặp sự cố: {str(e)}")
+            print(f"🚨 Lỗi hệ thống: {str(e)}")
             return []
+        
     # =================================================================
     # VAI TRÒ 4: BOT HẬU KỲ (Validation & Guardrails)
     # =================================================================
@@ -224,9 +266,10 @@ class AIScripts:
     # =================================================================
     # GIÁM ĐỐC SẢN XUẤT (Orchestrator)
     # =================================================================
-    def orchestrate_script_production(self, sub_item, config):
+    def orchestrate_script_production(self, sub_item, config, model_name="gemini-1.5-flash", provider="Gemini"):
         """
         Quy trình sản xuất kịch bản khép kín lấy AI từ GUI.
+        CẬP NHẬT: Nhận thêm model_name và provider từ Giao diện.
         """
         # BƯỚC 1: Bot Biên Tập
         context = self.get_form_knowledge_from_db(sub_item)
@@ -244,8 +287,13 @@ class AIScripts:
         if not is_safe:
             return None, msg
 
-        # BƯỚC 4: Bot Diễn Viên
-        script_json = self.get_ai_script(full_prompt)
+        # BƯỚC 4: Bot Diễn Viên (FIX: Truyền đủ tham số điều hướng)
+        # Bước 4: Gọi Bot Diễn Viên
+        script_json = self.get_ai_script(
+            prompt=full_prompt, 
+            model=model_name,        # Truyền model
+            provider=provider
+        )
         
         if script_json:
             print(f"🎬 {self.bot_actor}: Đóng máy! Kịch bản sẵn sàng lên sóng.")
