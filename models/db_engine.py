@@ -13,7 +13,7 @@ class DBEngine:
     def _create_tables(self):
         cursor = self.conn.cursor()
         
-        # 1. Bảng Dự án lớn (Tutorials)
+        # 1. Bảng Tutorials
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS tutorials (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,8 +24,7 @@ class DBEngine:
             )
         ''')
         
-        # 2. Bảng Bài học con (sub_contents)
-        # Sắp xếp lại thứ tự cột cho chuẩn logic: Status đứng trước, URL/Metadata đứng sau
+        # 2. Bảng sub_contents - THỨ TỰ CHUẨN ĐỂ KHÔNG BAO GIỜ LỆCH
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS sub_contents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -39,26 +38,6 @@ class DBEngine:
                 FOREIGN KEY(tutorial_id) REFERENCES tutorials(id) ON DELETE CASCADE
             )
         ''')
-        
-        # --- LOGIC BẢO TRÌ SCHEMA (ALTER TABLE) ---
-        # Kiểm tra xem các cột mới có tồn tại không, nếu không thì tự thêm
-        cursor.execute("PRAGMA table_info(sub_contents)")
-        columns = [column[1] for column in cursor.fetchall()]
-        
-        schema_updates = {
-            'status': "ALTER TABLE sub_contents ADD COLUMN status TEXT DEFAULT 'Chưa quay'",
-            'url': "ALTER TABLE sub_contents ADD COLUMN url TEXT",
-            'metadata': "ALTER TABLE sub_contents ADD COLUMN metadata TEXT"
-        }
-
-        for col_name, sql_alter in schema_updates.items():
-            if col_name not in columns:
-                try:
-                    cursor.execute(sql_alter)
-                    print(f"✅ Đã bổ sung cột '{col_name}' vào DB")
-                except Exception as e:
-                    print(f"⚠️ Lỗi khi nâng cấp schema (cột {col_name}): {e}")
-            
         self.conn.commit()
 
     def execute(self, query, params=()):

@@ -2,12 +2,14 @@ import streamlit as st
 import os
 from config import Config
 # Import logic điều hướng từ gpv_handler
-from .utils_dashboad.gpv_handler import render_gpv_logic, render_gpv_forms, ai_handler
+# from .utils_dashboad.gpv_render_form import render_gpv_logic, render_gpv_forms, ai_script
+from Bot_GPV.views.utils_dashboad.gpv_render_form import ai_script, render_gpv_logic, render_gpv_forms
 # Import class giao diện từ components
-from .components.dashboard_component import GPVComponent
+# from .components.gpv_component import GPVComponent
+from Bot_GPV.views.components.gpv_component import GPVComponent
 
 # --- 1. HÀM RENDER CHO DỰ ÁN THƯỜNG ---
-def render_normal_logic(ctrl, p):
+def render_normal_logic(ctrl, p, ai_script): # Vũ nhớ check xem đã nhận ai_script ở đầu hàm chưa nhé
     """Giao diện danh sách phẳng cho các dự án không phải GPV"""
     with st.container(border=True):
         st.subheader("📝 Quản lý bài học")
@@ -18,7 +20,15 @@ def render_normal_logic(ctrl, p):
         
         if col_btn.button("➕ THÊM BÀI", use_container_width=True, type="primary"):
             if sub_n: 
-                ctrl.add_sub_content(p['id'], sub_n, p['folder_name'])
+                # SỬA LỖI TẠI ĐÂY: Truyền tên tham số rõ ràng để không bao giờ bị lệch cột
+                ctrl.add_sub_content(
+                    t_id=p['id'], 
+                    sub_title=sub_n, 
+                    parent_folder=p['folder_name'],
+                    url="",         # Ép kiểu rỗng để tránh nhảy cột Status
+                    metadata={}      # Khởi tạo meta rỗng cho bài mới
+                )
+                st.success(f"Đã thêm: {sub_n}")
                 st.rerun()
             else:
                 st.error("Vũ ơi, nhập tên bài đã chứ!")
@@ -26,15 +36,14 @@ def render_normal_logic(ctrl, p):
     st.divider()
     
     # Lấy danh sách bài học từ DB
-    display_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
+    display_subs = ctrl.get_sub_contents(p['id'])
     
     if not display_subs:
         st.info("Dự án này chưa có bài học nào. Hãy thêm ở trên 👆")
     else:
         # GỌI TỪ CLASS COMPONENT: Vẽ từng dòng video (🎥, 🤖, ⚙️)
-        # Truyền thêm ai_handler để phục vụ cấu hình AI trong popover
-        GPVComponent.render_item_rows(ctrl, p, display_subs, ai_handler)
-
+        # Đảm bảo ai_script đã được truyền vào hàm render_normal_logic
+        GPVComponent.render_item_rows(ctrl, p, display_subs, ai_script)
 
 # --- 2. HÀM CHÍNH ĐIỀU HƯỚNG DASHBOARD ---
 def render_dashboard(ctrl):
@@ -120,13 +129,18 @@ def render_dashboard(ctrl):
                 st.rerun()
         return
 
+
     if p:
-        # Kiểm tra nếu là dự án Giải Pháp Vàng (dựa trên tên)
+        # Kiểm tra nếu là dự án Giải Pháp Vàng
         is_gpv = any(kw in p['title'].lower() for kw in ["giải pháp vàng", "giaiphapvang", "gpv"])
         
         if is_gpv:
-            render_gpv_logic(ctrl, p)
+            # Đảm bảo truyền ai_script vào để đồng bộ logic AI bên trong GPV
+            render_gpv_logic(ctrl, p, ai_script) 
         else:
-            render_normal_logic(ctrl, p)
+            # Dự án thường cũng cần ai_script cho các tính năng bổ trợ trong GPVComponent
+            render_normal_logic(ctrl, p, ai_script)
     else:
         st.error("Dữ liệu dự án có vấn đề. Hãy bấm 'Làm mới' ở Sidebar.")
+            
+    

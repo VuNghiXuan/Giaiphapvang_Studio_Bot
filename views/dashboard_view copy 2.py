@@ -8,7 +8,7 @@ from Bot_GPV.crawle.scrape_giaiphapvang import GiaiphapvangScraper
 # Nếu ông để file cùng thư mục, dùng lệnh này:
 # from .utils_dashboard.gpv_handler import render_gpv_logic, render_gpv_forms 
 # from utils import get_status_info
-from .utils_dashboad.gpv_handler import render_gpv_logic, render_gpv_forms 
+from .utils_dashboad.gpv_render_form import render_gpv_logic, render_gpv_forms 
 
 # --- TRƯỜNG HỢP ÔNG MUỐN GOM TẤT CẢ VÀO 1 FILE DASHBOARD.PY ---
 
