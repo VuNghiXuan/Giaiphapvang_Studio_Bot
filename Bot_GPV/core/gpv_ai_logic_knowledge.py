@@ -124,37 +124,34 @@ class AIScripts:
     # =================================================================
     def generate_ai_prompt(self, module_name, form_name, config, context):
         """ 
-        [Bot Đạo Diễn] - Soạn thảo kịch bản chi tiết dựa trên chỉ đạo từ GUI. 
+        [Bot Đạo Diễn] - Soạn thảo kịch bản dựa trên Blueprint 5 cấp.
         """
-        print(f"{self.bot_director}: Đang soạn kịch bản cho phân cảnh '{form_name}'...")
-        
-        # Lấy thông tin từ GUI, không tự chế
-        slogan = config.get('slogan', Config.DEFAULT_SLOGAN)
+        slogan = config.get('slogan', "Ứng dụng vàng, giải pháp toàn diện cho ngành kim hoàn")
         user_notes = config.get('notes', "")
         
+        # Lưu ý: Context ở đây chính là chuỗi Blueprint JSON mà StudioController gửi sang
         prompt = f"""
-        Bạn là Đạo diễn kịch bản cho series 'Hướng dẫn phần mềm Ứng Dụng Vàng'.
-        Nhiệm vụ: Viết kịch bản thao tác chuẩn xác cho chức năng "{form_name}" (Module {module_name}).
-        
-        --- 📚 KIẾN THỨC NGHIỆP VỤ (DỮ LIỆU THỰC TẾ) ---
-        {context}
+Bạn là Đạo diễn kịch bản cho series 'Hướng dẫn phần mềm Ứng Dụng Vàng'.
+Nhiệm vụ: Viết kịch bản thao tác chuẩn xác cho chức năng "{form_name}" (Module {module_name}).
 
-        --- ✍️ CHỈ ĐẠO TỪ BIÊN KỊCH VŨ (GUI) ---
-        {user_notes if user_notes else "Dùng ngôn từ ngành kim hoàn chuyên nghiệp (vàng, tuổi vàng, tiền công)."}
+{context}
 
-        --- 🎬 CẤU TRÚC KỊCH BẢN (CHO BOT DIỄN VIÊN) ---
-        Kịch bản gồm các bước JSON. Mỗi bước: Speak (Hoài My nói) -> Action (Bot thực hiện).
-        - 'action': [speak, highlight, click, type, hover, wait].
-        - 'target': Selector CSS chính xác từ Metadata hoặc text (VD: "text='Thêm mới'").
-        - 'text': Lời thoại tiếng Việt.
-        - 'value': Giá trị nhập mẫu thực tế.
-        - 'duration': 0.5 - 2.0 giây.
+--- ✍️ CHỈ ĐẠO TỪ BIÊN KỊCH VŨ (GUI) ---
+{user_notes if user_notes else "Dùng ngôn từ ngành kim hoàn chuyên nghiệp (tiệm vàng, tuổi vàng, tiền công)."}
 
-        Hành động cuối cùng luôn là lời chào kết: "{slogan}"
+--- 🎬 CẤU TRÚC KỊCH BẢN (CHO BOT DIỄN VIÊN) ---
+Kịch bản gồm các bước JSON. Mỗi bước: Speak (Hoài My nói) -> Action (Bot thực hiện).
+- 'action': [speak, highlight, click, type, hover, wait].
+- 'target': Selector CSS chính xác từ Blueprint hoặc text (VD: "text='Thêm mới'").
+- 'text': Lời thoại tiếng Việt (phải khớp với hành động).
+- 'value': Giá trị nhập mẫu thực tế (nếu là hành động type).
+- 'duration': 0.5 - 2.5 giây.
 
-        --- 📤 ĐỊNH DẠNG JSON TRẢ VỀ (BẮT BUỘC) ---
-        Chỉ trả về duy nhất 1 mảng JSON. Không giải thích thêm.
-        """
+Hành động cuối cùng luôn là lời chào kết: "{slogan}"
+
+--- 📤 ĐỊNH DẠNG JSON TRẢ VỀ (BẮT BUỘC) ---
+Chỉ trả về duy nhất 1 mảng JSON. Không giải thích thêm.
+"""
         return prompt
 
     # =================================================================
@@ -162,8 +159,10 @@ class AIScripts:
     # =================================================================  
 
     def get_ai_script(self, prompt, model="gemini-1.5-flash", provider="Gemini"):
-        """ [Bot Diễn Viên] - Đã được gọt dũa để xử lý JSON siêu chuẩn. """
-
+        """ 
+        [Bot Diễn Viên] - Xử lý đa nền tảng và gọt dũa JSON siêu chuẩn. 
+        Đảm bảo đầu ra luôn là một list các bước thao tác.
+        """
         print(f"\n--- [NỘI DUNG BỨC THƯ GỬI ĐI] ---\n{prompt}\n--- [HẾT BỨC THƯ] ---\n")
         
         provider_node = provider.lower()
@@ -172,9 +171,10 @@ class AIScripts:
         try:
             raw_text = ""
 
-            # --- NHÁNH 1: GOOGLE GEMINI ---
+            # --- NHÁNH 1: GOOGLE GEMINI (Sử dụng SDK v1beta cho tính năng JSON mode) ---
             if provider_node == "gemini":
                 api_key = os.getenv("GOOGLE_API_KEY") or Config.GEMINI_API_KEY
+                # Khởi tạo client với cấu hình chuẩn
                 client = genai.Client(api_key=api_key, http_options={'api_version': 'v1beta'})
                 clean_model_name = model.replace("models/", "")
                 
@@ -188,7 +188,7 @@ class AIScripts:
                 )
                 raw_text = response.text
 
-            # --- NHÁNH 2: OLLAMA (LOCAL) ---
+            # --- NHÁNH 2: OLLAMA (Chạy Local) ---
             elif provider_node == "ollama":
                 base_url = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
                 payload = {
@@ -201,7 +201,7 @@ class AIScripts:
                 response.raise_for_status()
                 raw_text = response.json().get("response", "")
 
-            # --- NHÁNH 3: GROQ ---
+            # --- NHÁNH 3: GROQ (Tốc độ cao) ---
             elif provider_node == "groq":
                 from groq import Groq
                 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
@@ -214,39 +214,52 @@ class AIScripts:
                 raw_text = completion.choices[0].message.content
 
             # =========================================================
-            # LỚP GỌT DŨA JSON (CLEANING LAYER)
+            # LỚP GỌT DŨA JSON (CLEANING LAYER) - CỰC KỲ QUAN TRỌNG
             # =========================================================
-            if not raw_text: return []
+            if not raw_text: 
+                print(f"❌ {self.bot_actor}: AI không trả về dữ liệu.")
+                return []
 
             content = raw_text.strip()
             
-            # 1. Khử Markdown và trích xuất JSON bằng Regex chuẩn
-            # Tìm từ dấu [ hoặc { đầu tiên đến dấu ] hoặc } cuối cùng
+            # 1. Khử Markdown (nếu AI quên JSON mode) và trích xuất mảng/đối tượng JSON
+            # Regex này tìm từ dấu [ hoặc { đầu tiên đến dấu ] hoặc } cuối cùng
             json_match = re.search(r"([\[\{][\s\S]*[\]\}])", content)
             if json_match:
                 content = json_match.group(1)
 
-            # 2. Xử lý dấu phẩy thừa (Trailing Commas)
+            # 2. Xử lý lỗi phổ biến: dấu phẩy thừa trước dấu đóng ngoặc (Trailing Commas)
             content = re.sub(r",\s*([\]\}])", r"\1", content)
 
-            # 3. Chuyển đổi thành List dữ liệu
+            # 3. Chuyển đổi thành dữ liệu Python
             try:
                 data = json.loads(content)
+                
+                # Trường hợp 1: AI trả về trực tiếp một List (Đúng chuẩn nhất)
+                if isinstance(data, list):
+                    return data
+                
+                # Trường hợp 2: AI bọc list trong một Object (Vd: {"steps": [...]})
                 if isinstance(data, dict):
-                    # Nếu AI bọc trong object, tìm các key phổ biến
-                    for key in ["steps", "actions", "script", "data"]:
+                    # Duyệt tìm các key phổ biến mà AI hay tự đặt
+                    for key in ["steps", "actions", "script", "data", "commands"]:
                         if key in data and isinstance(data[key], list):
+                            print(f"✅ {self.bot_actor}: Đã trích xuất list từ key '{key}'")
                             return data[key]
+                    
+                    # Nếu là dict đơn lẻ, bọc nó vào list để đồng bộ đầu ra
                     return [data]
-                return data if isinstance(data, list) else []
-            except json.JSONDecodeError:
-                print(f"❌ Lỗi: AI phản hồi JSON sai định dạng.")
+                
+                return []
+            except json.JSONDecodeError as je:
+                print(f"❌ {self.bot_actor}: Lỗi parse JSON: {je}")
+                # Ghi log để hậu kiểm
                 with open("debug_raw_ai_error.txt", "w", encoding="utf-8") as f:
                     f.write(raw_text)
                 return []
 
         except Exception as e:
-            print(f"🚨 Lỗi hệ thống: {str(e)}")
+            print(f"🚨 {self.bot_actor} Lỗi hệ thống: {str(e)}")
             return []
         
     # =================================================================

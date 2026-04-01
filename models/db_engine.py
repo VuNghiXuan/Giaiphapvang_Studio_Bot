@@ -52,6 +52,15 @@ class DBEngine:
             print(f"Params: {params}")
             raise e
 
+    def rollback(self):
+        """Hàm quay xe khi gặp lỗi DB"""
+        try:
+            if self.conn:
+                self.conn.rollback()
+                print("⏪ Đã thực hiện Rollback dữ liệu do có lỗi.")
+        except Exception as e:
+            print(f"❌ Không thể Rollback: {e}")
+            
     def commit(self):
         """Lưu thay đổi vào Database"""
         self.conn.commit()

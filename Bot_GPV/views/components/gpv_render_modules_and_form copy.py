@@ -6,7 +6,6 @@ from Bot_GPV.core.gpv_ai_logic_knowledge import AIScripts
 # from Bot_GPV.views.components.gpv_component import GPVComponent
 from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
 from config import Config
-import asyncio
 
 # Khởi tạo bộ não AI
 ai_script = AIScripts()
@@ -96,21 +95,16 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
             # 1. Lấy dữ liệu mới nhất từ DB
             db_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
             
-            # 2. Tìm URL của Module Home
+            # 2. Tìm URL của Module Home (Lấy từ cột 'url' thay vì 'status' cho chuẩn)
             mod_home = next((s for s in db_subs if s['sub_title'] == f"{modul_name}|Home"), None)
+            
+            # Ưu tiên lấy link từ cột 'url', nếu cũ quá thì ngó tạm cột 'status'
             target_url = mod_home.get('url') if mod_home and mod_home.get('url') else mod_home.get('status') if mod_home else None
             
             if target_url:
                 extractor = GiaiphapvangScraper()
-                
-                try:
-                    # --- SỬA CHỖ NÀY: Gọi trực tiếp vì extractor giờ là Sync ---
-                    deep_data = extractor.update_module_details(project_folder, modul_name, target_url)
-                    # ----------------------------------------------------------
-                    
-                except Exception as e:
-                    st.error(f"❌ Lỗi khi quét Playwright: {e}")
-                    deep_data = None
+                # Chạy Playwright để vét sạch cấu trúc
+                deep_data = extractor.update_module_details(project_folder, modul_name, target_url)
                 
                 if deep_data:
                     for form_name, f_info in deep_data.items():
@@ -121,15 +115,15 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
                         existing_form = next((s for s in db_subs if s['sub_title'] == full_title), None)
                         
                         if existing_form:
-                            # CẬP NHẬT
+                            # CẬP NHẬT: Dùng Named Arguments để chống nhảy cột
                             ctrl.update_sub_content(
                                 sub_id=existing_form['id'], 
                                 new_url=form_url,
                                 new_metadata=metadata_json,
-                                new_status="Chưa quay"
+                                new_status="Chưa quay" # Reset status nếu cần
                             )
                         else:
-                            # THÊM MỚI
+                            # THÊM MỚI: Truyền đủ 5 tham số chính chủ
                             ctrl.add_sub_content(
                                 t_id=p['id'],
                                 sub_title=full_title,
@@ -158,33 +152,25 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
         elif not isinstance(meta, dict):
             meta = {}
 
-        # --- 1. GOM TOÀN BỘ FIELDS (Không giới hạn, chỉ giới hạn khi hiển thị) ---
+        # 1. Trích xuất Fields (Labels)
         fields = [f.get('label') for f in meta.get('form_fields', []) if f.get('label')]
-        sub['all_fields'] = fields # Lưu toàn bộ để AI dùng
-        sub['preview_fields'] = "📝 " + ", ".join(fields[:5]) + ("..." if len(fields) > 5 else "") if fields else "🔍 Trống"
+        sub['preview_fields'] = "📝 " + ", ".join(fields[:3]) + ("..." if len(fields) > 3 else "") if fields else "🔍 Chưa có field"
         
-        # --- 2. GOM TOÀN BỘ ACTIONS (Nút bấm) ---
-        # Lấy tất cả, không quan trọng từ khóa nào
-        all_btns = []
-        raw_btns = meta.get('actions', []) + meta.get('row_operations', []) # Gom cả nút chung và nút trong dòng
+        # 2. Trích xuất Actions (Buttons) - Fix lỗi lặp item['label']
+        btns = meta.get('actions', [])
+        # Lọc các nút quan trọng
+        important_keywords = ["Lưu", "Thêm", "Xuất", "In", "Tính"]
+        imp = [b for b in btns if any(kw in (b.get('label', '') if isinstance(b, dict) else str(b)) for kw in important_keywords)]
         
-        for item in raw_btns:
-            label = item.get('label', '') if isinstance(item, dict) else str(item)
-            if label and label not in all_btns: # Chống trùng
-                all_btns.append(label)
-
-        sub['all_actions'] = all_btns # Cất hết vào đây để sau này "diễn"
-        
-        # Chỉ dùng từ khóa để "Sắp xếp ưu tiên" lên đầu khi hiển thị Preview thôi
-        priority_keywords = ["Lưu", "Thêm", "Tính", "In", "Duyệt"]
-        sorted_btns = sorted(all_btns, key=lambda x: any(kw in x for kw in priority_keywords), reverse=True)
-
-        # Hiển thị ra UI Streamlit (Vẫn lấy được đa dạng nút)
-        sub['preview_actions'] = "⚡ " + ", ".join(sorted_btns[:6]) + ("..." if len(sorted_btns) > 6 else "") if sorted_btns else "🚫 Không nút"
-        
-        # QUAN TRỌNG: Phải append nó vào danh sách hiển thị
+        source_list = imp[:3] if imp else btns[:3]
+        labels = []
+        for item in source_list:
+            if isinstance(item, dict): labels.append(str(item.get('label', '')))
+            else: labels.append(str(item))
+            
+        sub['preview_actions'] = "⚡ " + ", ".join(filter(None, labels)) if labels else ""
         display_data.append(sub)
-
+    
     # GỌI COMPONENT HIỂN THỊ
     if display_data:
         gp_component = RenderForm() 

@@ -7,6 +7,7 @@ from Bot_GPV.views.components.gpv_render_modules_and_form import ai_script, rend
 # Import class giao diện từ components
 # from .components.gpv_component import GPVComponent
 from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
+# from ..config import Config
 
 # --- 1. HÀM RENDER CHO DỰ ÁN THƯỜNG ---
 def render_normal_logic(ctrl, p, ai_script): # Vũ nhớ check xem đã nhận ai_script ở đầu hàm chưa nhé
@@ -61,7 +62,7 @@ def render_dashboard(ctrl):
         st.divider()
         st.caption(f"📍 Storage: {Config.BASE_STORAGE}")
 
-    st.title("🚀 QUẢN LÝ VIDEO NGHIỆP VỤ")
+    st.title("🎬 HỆ THỐNG SẢN XUẤT PHIM TỰ ĐỘNG (AI)")
 
     # --- 1. CHUẨN BỊ DANH SÁCH DỰ ÁN ---
     db_projects = [dict(p) for p in ctrl.get_all_tutorials()]
@@ -132,7 +133,7 @@ def render_dashboard(ctrl):
 
     if p:
         # Kiểm tra nếu là dự án Giải Pháp Vàng
-        is_gpv = any(kw in p['title'].lower() for kw in ["giải pháp vàng", "giaiphapvang", "gpv"])
+        is_gpv = any(kw in p['title'].lower() for kw in ["giải pháp vàng", "giaiphapvang", "gpv", "giải pháp"])
         
         if is_gpv:
             # Đảm bảo truyền ai_script vào để đồng bộ logic AI bên trong GPV

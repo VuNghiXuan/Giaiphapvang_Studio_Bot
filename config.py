@@ -5,7 +5,7 @@ import unicodedata
 class Config:
     # --- THÔNG TIN HỆ THỐNG TARGET ---
     TARGET_DOMAIN = "https://giaiphapvang.net"
-    APP_NAME = "Ứng Dụng Vàng"
+    APP_NAME = "Giải Pháp Vàng"
     
     # --- CẤU HÌNH MARKETING & BRANDING ---
     DEFAULT_SLOGAN = "Ứng dụng vàng, giải pháp toàn diện cho ngành kim hoàn"
