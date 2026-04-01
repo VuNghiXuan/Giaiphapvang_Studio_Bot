@@ -46,39 +46,39 @@ class StudioController:
             print(f"❌ Lỗi delete_tutorial: {e}")
             return False
 
-    # --- QUẢN LÝ BÀI HỌC CON (SUB_CONTENTS) ---
-
+    # --- HELPERS ---
     def _get_default_metadata(self):
-        """Hàm helper để tạo khung Metadata chuẩn, tránh lỗi thiếu key"""
+        """Khung Metadata đồng bộ 100% với Script JS 'Vét Cạn'"""
         return {
-            "location": {
-                "url": "", "title": "", "breadcrumbs": [], 
-                "active_module": "", "active_tab": ""
-            },
             "navigation": {
-                "sidebar_menu": [], 
-                "tabs": []
+                "url": "",
+                "path": "",
+                "hierarchy": [],
+                "current_step": ""
             },
-            "content": {
-                "primary_actions": [], 
-                "row_operations": [], 
-                "form_fields": [], 
-                "table_columns": []
+            "session": {
+                "timestamp": "",
+                "is_popup_open": False,
+                "popup_type": "NONE"
             },
-            "state": {
-                "is_loading": False,
-                "is_dialog_open": False,
-                "scroll_status": {
-                    "sidebar_can_scroll": False,
-                    "table_horizontal_scroll": False
-                }
+            "layout": {
+                "sidebar": [],
+                "main_content": {
+                    "actions": [],
+                    "row_operations": [],
+                    "inputs": [],
+                    "tables": [],
+                    "scrollers": []
+                },
+                "active_form": None, # Chứa cấu trúc form nếu có 'nội soi'
+                "export_formats": []
             }
         }
     
 
     def add_sub_content(self, t_id, sub_title, parent_folder, url=None, metadata=None):
         try:
-            # Check trùng URL
+            # Check trùng URL để tránh tạo rác
             if url and url.strip() != "":
                 existing = self.db.fetchone(
                     "SELECT id FROM sub_contents WHERE tutorial_id = ? AND url = ?", 
@@ -86,19 +86,13 @@ class StudioController:
                 )
                 if existing: return existing['id'] 
 
-            res = self.db.fetchone(
-                "SELECT MAX(position) as max_pos FROM sub_contents WHERE tutorial_id = ?", 
-                (t_id,)
-            )
+            res = self.db.fetchone("SELECT MAX(position) as max_pos FROM sub_contents WHERE tutorial_id = ?", (t_id,))
             next_pos = (res['max_pos'] + 1) if res and res['max_pos'] is not None else 0
 
-            # Khởi tạo metadata chuẩn nếu chưa có
+            # Khởi tạo Metadata
             final_metadata = self._get_default_metadata()
             if isinstance(metadata, dict):
-                # Hợp nhất metadata truyền vào với khung chuẩn
-                for key in final_metadata:
-                    if key in metadata:
-                        final_metadata[key] = metadata[key]
+                final_metadata.update(metadata)
             
             meta_str = json.dumps(final_metadata, ensure_ascii=False)
 
@@ -112,14 +106,13 @@ class StudioController:
             })
             new_id = cursor.lastrowid
 
-            # Tạo folder
+            # Tạo cấu trúc thư mục chuẩn cho Video Production
             safe_title = "".join([c if c.isalnum() else "_" for c in sub_title])
             unique_folder_name = f"{new_id}_{safe_title}"
             self.db.execute("UPDATE sub_contents SET sub_folder = ? WHERE id = ?", (unique_folder_name, new_id))
 
             full_sub_path = os.path.join(Config.BASE_STORAGE, parent_folder, unique_folder_name)
-            os.makedirs(full_sub_path, exist_ok=True)
-            for sub_f in ["raw", "outputs", "assets"]:
+            for sub_f in ["raw", "outputs", "assets", "metadata"]:
                 os.makedirs(os.path.join(full_sub_path, sub_f), exist_ok=True)
             
             self.db.commit()
@@ -130,56 +123,52 @@ class StudioController:
             return False
 
     def update_sub_content(self, sub_id: int, **kwargs):
-        """Cập nhật thông tin và HỢP NHẤT metadata cũ với mới"""
+        """Cập nhật và Hợp nhất thông tin thông minh"""
         try:
             current = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
             if not current: return False
 
-            # Lấy metadata cũ từ DB
+            # Xử lý Metadata (Merge sâu)
             try:
                 old_meta = json.loads(current['metadata']) if current['metadata'] else self._get_default_metadata()
             except:
                 old_meta = self._get_default_metadata()
 
-            # Lấy metadata mới từ kwargs
-            new_meta = kwargs.get('metadata') or kwargs.get('new_metadata')
-            
-            if new_meta is not None:
-                if isinstance(new_meta, dict):
-                    # CHỈNH SỬA QUAN TRỌNG: Hợp nhất (Merge) thay vì ghi đè hoàn toàn
-                    for key in old_meta:
-                        if key in new_meta:
-                            old_meta[key] = new_meta[key]
+            new_meta = kwargs.get('metadata')
+            if new_meta and isinstance(new_meta, dict):
+                # Chỉ cập nhật những gì mới quét được, giữ lại những gì cũ đang có
+                for key, value in new_meta.items():
+                    if isinstance(value, dict) and key in old_meta:
+                        old_meta[key].update(value)
+                    else:
+                        old_meta[key] = value
                 final_meta_str = json.dumps(old_meta, ensure_ascii=False)
             else:
                 final_meta_str = current['metadata']
 
-            status = kwargs.get('status') or kwargs.get('new_status') or current['status']
-            # Tự động chuyển trạng thái nếu đã có metadata quét về
-            if new_meta and status == 'Chưa quay':
-                status = 'Đã quét'
+            status = kwargs.get('status') or current['status']
+            if new_meta and status == 'Chưa quay': status = 'Đã quét'
 
             params = {
                 "id": sub_id,
-                "title": kwargs.get('title') or kwargs.get('new_title') or current['sub_title'],
+                "title": kwargs.get('title') or current['sub_title'],
                 "status": status,
-                "url": str(kwargs.get('url') or kwargs.get('new_url') or current['url'] or ""),
+                "url": str(kwargs.get('url') or current['url'] or ""),
                 "meta": final_meta_str
             }
 
-            query = """
+            self.db.execute("""
                 UPDATE sub_contents 
                 SET sub_title = :title, status = :status, url = :url, metadata = :meta 
                 WHERE id = :id
-            """
-            self.db.execute(query, params)
+            """, params)
             self.db.commit()
             return True
         except Exception as e:
-            print(f"❌ Lỗi update_sub_content: {e}")
+            print(f"❌ Lỗi update: {e}")
             self.db.rollback()
             return False
-
+        
     def get_sub_contents(self, tutorial_id):
         try:
             rows = self.db.fetchall("SELECT * FROM sub_contents WHERE tutorial_id = ? ORDER BY position ASC", (tutorial_id,))
@@ -208,128 +197,74 @@ class StudioController:
 
     def get_formatted_meta_for_ai(self, sub_id):
         """
-        BỨC THƯ GỬI AI (DIGITAL TWIN ACTOR)
-        Xây dựng lộ trình: Login -> Home -> Module -> Sidebar (Scroll) -> Tab -> Form -> Multi-Save
+        BỨC THƯ GỬI AI (DIGITAL TWIN ACTOR) - TRÍ TUỆ NGÀNH VÀNG
         """
         try:
             sub = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
             if not sub: return None
             
-            meta = json.loads(sub['metadata']) if isinstance(sub['metadata'], str) else (sub['metadata'] or {})
-            content = meta.get("content", {})
+            meta = json.loads(sub['metadata'])
             nav = meta.get("navigation", {})
-            state = meta.get("state", {})
-            scroll = state.get("scroll_status", {})
+            layout = meta.get("layout", {})
+            main = layout.get("main_content", {})
+            form = layout.get("active_form", {})
 
-            # --- 1. KHỞI TẠO LỘ TRÌNH (USER JOURNEY) ---
-            execution_flow = []
+            # --- XÂY DỰNG LỘ TRÌNH THÔNG MINH ---
+            flow = []
             
-            # Bước 1: Trạng thái bắt đầu
-            execution_flow.append({
-                "step": 1, 
-                "action": "check_context", 
-                "target": "Dashboard_Home", 
-                "desc": f"Đang ở trang chủ {Config.APP_NAME}. Giới thiệu bài học: {sub['sub_title']}"
+            # 1. Khởi động (Lấy context từ Hierarchy)
+            location = " > ".join(nav.get('hierarchy', ['Trang chủ']))
+            flow.append({
+                "stage": "OPENING",
+                "desc": f"Giới thiệu bài học '{sub['sub_title']}' tại module {location}",
+                "action": "identity_check"
             })
 
-            # Bước 2: Truy cập Module chính
-            # Tự suy luận Module từ tiêu đề (Vũ có thể map table này rộng hơn)
-            module_map = {"chi nhánh": "Hệ thống", "vàng": "Nghiệp vụ", "kho": "Kho hàng", "thu chi": "Kế toán"}
-            module_name = next((v for k, v in module_map.items() if k in sub['sub_title'].lower()), "Hệ thống")
-            
-            execution_flow.append({
-                "step": 2, 
-                "action": "module_access", 
-                "target": f"nav:has-text('{module_name}')",
-                "desc": f"Click chọn Module {module_name} trên thanh điều hướng chính"
+            # 2. Điều hướng Sidebar (Nếu chưa đúng trang)
+            flow.append({
+                "stage": "NAVIGATION",
+                "action": "ensure_page",
+                "target_url": nav.get('url'),
+                "breadcrumb": nav.get('hierarchy')
             })
 
-            # Bước 3: Tương tác Sidebar (Có tính đến Scroll)
-            current_step = 3
-            sidebar_items = nav.get('sidebar_menu', [])
-            target_menu = next((item for item in sidebar_items if item.get('label') in sub['sub_title'] or item.get('is_active')), None)
-            
-            if target_menu:
-                execution_flow.append({
-                    "step": current_step, 
-                    "action": "click_sidebar", 
-                    "target": target_menu.get('selector'),
-                    "desc": f"Tìm và chọn menu: {target_menu['label']}",
-                    "need_scroll": scroll.get('sidebar_can_scroll', False) # Quan trọng để AI diễn tả việc tìm kiếm
+            # 3. Thao tác chính (Mở Form/Thêm mới)
+            add_btn = next((a for a in main.get('actions', []) if "thêm" in a['label'].lower()), None)
+            if add_btn:
+                flow.append({
+                    "stage": "INTERACTION",
+                    "action": "click",
+                    "label": add_btn['label'],
+                    "selector": add_btn['selector']
                 })
-                current_step += 1
 
-            # Bước 4: Xử lý Tab (Nếu có phân cấp như Thông tin công ty -> Chi nhánh)
-            tabs = nav.get('tabs', [])
-            if tabs:
-                active_tab = next((t for t in tabs if t.get('is_active')), tabs[0])
-                execution_flow.append({
-                    "step": current_step, 
-                    "action": "switch_tab",
-                    "target": active_tab.get('selector'),
-                    "desc": f"Chuyển sang thẻ nội dung: {active_tab['label']}"
-                })
-                current_step += 1
-
-            # Bước 5: Thao tác mở Form (Tạo mới)
-            btns = content.get("primary_actions", [])
-            open_btn = next((b for b in btns if any(k in b['label'] for k in ["Thêm", "Tạo", "Mới", "Lập"])), None)
-            execution_flow.append({
-                "step": current_step, 
-                "action": "open_form",
-                "target": open_btn['selector'] if open_btn else "button:has-text('Tạo mới')",
-                "desc": f"Click nút {open_btn['label'] if open_btn else 'Tạo mới'} để mở cửa sổ nhập liệu"
-            })
-            current_step += 1
-
-            # Bước 6: Nhập liệu chi tiết (AI tự bịa data thực tế ngành vàng ở đây)
-            fields = [f for f in content.get("form_fields", []) if f.get('selector') != '#_r_p_']
-            execution_flow.append({
-                "step": current_step, 
-                "action": "fill_form",
-                "fields": fields if fields else "AUTO_FILL_BY_CONTEXT", 
-                "desc": "Nhập liệu chi tiết các thông số (Vàng, Tuổi, Trọng lượng, Chi nhánh...)",
-                "is_dialog": state.get('is_dialog_open', True)
-            })
-            current_step += 1
-
-            # Bước 7: Xử lý đa nút bấm (Lưu / Lưu & Thêm / Hủy)
-            submit_actions = []
-            for b in btns:
-                label = b['label'].lower()
-                if any(k in label for k in ["lưu", "xác nhận", "thêm tiếp", "hủy", "đóng"]):
-                    submit_actions.append({"label": b['label'], "selector": b['selector']})
-
-            execution_flow.append({
-                "step": current_step, 
-                "action": "finalize",
-                "available_buttons": submit_actions,
-                "desc": "Hoàn tất nghiệp vụ. Chọn Lưu để đóng form hoặc Lưu & Thêm để nhập tiếp."
+            # 4. Nhập liệu (Đây là lúc AI cần 'diễn' nghiệp vụ vàng)
+            target_fields = form.get('inputs') if form else main.get('inputs', [])
+            flow.append({
+                "stage": "DATA_ENTRY",
+                "fields": [f['label'] for f in target_fields],
+                "logic_note": "Dùng kiến thức ngành vàng (Vàng 610, 18K, trọng lượng chi) để điền mẫu."
             })
 
-            # --- 2. ĐÓNG GÓI PROMPT JSON ---
-            full_letter = f"""Mày là AI Actor của thương hiệu {Config.APP_NAME}. 
-Slogan: "{Config.DEFAULT_SLOGAN}"
+            # --- ĐÓNG GÓI LÁ THƯ ---
+            prompt = f"""Mày là Chuyên gia đào tạo AI của Giai Pháp Vàng.
+Bài học: {sub['sub_title']}
+URL: {nav.get('url')}
 
-Nhiệm vụ: Viết kịch bản video hướng dẫn nghiệp vụ chuyên nghiệp cho bài: "{sub['sub_title']}".
+--- 📜 LỘ TRÌNH NGHIỆP VỤ (HÃY TUÂN THỦ) ---
+{json.dumps(flow, ensure_ascii=False, indent=2)}
 
---- 📦 BLUEPRINT HÀNH TRÌNH (TUÂN THỦ TRÌNH TỰ NÀY) ---
-{json.dumps(execution_flow, ensure_ascii=False, indent=2)}
+--- 🎭 CHỈ THỊ DIỄN XUẤT CHO DIGITAL TWIN ---
+1. GIỌNG ĐIỆU: Chuyên nghiệp, rành mạch như một kế toán trưởng ngành vàng. 
+2. NỘI DUNG: Khi nói về các ô nhập liệu, phải giải thích TẠI SAO (VD: 'Ô trọng lượng này quý khách nhập theo đơn vị Chi để hệ thống tự tính giá trị').
+3. DỮ LIỆU MẪU: Tự tạo dữ liệu thực tế (Ví dụ: Nhập hàng 'Nhẫn nam 610', trọng lượng '2.550').
+4. TRẢ VỀ: Duy nhất 1 mảng JSON chứa các bước: [{{ "step": 1, "speech": "...", "action": "...", "selector": "..." }}].
 
---- 🛠 CHỈ THỊ DIỄN XUẤT ---
-1. LỜI THOẠI (Speech): 
-   - Phải tự nhiên, dẫn dắt từ trang Home: "Chào mừng quý khách, hôm nay tôi sẽ hướng dẫn..."
-   - Khi chọn Sidebar: "Tại danh mục bên trái, quý khách cuộn chuột tìm mục..."
-   - Khi nhập liệu: Bịa dữ liệu thực tế (Ví dụ: Nhập Chi nhánh Quận 5, Mã CN-Q5, Vàng mặc định 610...).
-2. ĐỊNH DẠNG: Trả về duy nhất 1 mảng **json** phẳng. Mỗi phần tử gồm: (Step, Action, Target, Speech, UI_Note).
-3. TRÁNH LỖI: Luôn bao gồm chữ **json** trong kết quả để đảm bảo định dạng máy đọc được.
-
-Bắt đầu viết kịch bản **json** ngay:
-"""
-            return {"prompt_letter": full_letter}
-
+Bắt đầu viết kịch bản kĩ thuật:"""
+            
+            return {"prompt_letter": prompt}
         except Exception as e:
-            print(f"❌ Lỗi get_formatted_meta_for_ai: {e}")
+            print(f"❌ Lỗi tạo prompt: {e}")
             return None
         
     def delete_sub_content(self, sub_id, folder_name, sub_folder):
