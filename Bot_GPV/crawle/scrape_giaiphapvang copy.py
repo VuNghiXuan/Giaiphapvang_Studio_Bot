@@ -1,11 +1,18 @@
+# 1. Thư viện hệ thống (Standard Libraries)
 import os
 import re
 import json
 import time
+from datetime import datetime
+
+# 2. Thư viện bên thứ ba (Third-party)
 from playwright.sync_api import sync_playwright
-from dotenv import load_dotenv
-from config import Config
 from PIL import Image # pip install Pillow
+from dotenv import load_dotenv
+
+# 3. Các Module nội bộ (Local Modules)
+from config import Config
+from Bot_GPV.ai_film_factory.vision_machine import VisionMachine
 
 load_dotenv()
 
@@ -14,6 +21,8 @@ class GiaiphapvangScraper:
         if not os.path.exists(Config.BASE_STORAGE):
             os.makedirs(Config.BASE_STORAGE, exist_ok=True)
         print("🚀 Scraper sẵn sàng: Chế độ đào sâu vét cạn (Deep Scan).")
+
+        self.vision = VisionMachine()
 
     def _save_step(self, project_folder, sub_title, data, *args, **kwargs):
         """
@@ -114,78 +123,73 @@ class GiaiphapvangScraper:
 
     def update_module_details(self, project_name, module_name, module_url):
         """
-        Logic điều hướng để vét cạn các nút động và lấy URL thực tế.
-        Đã gia cố: Chống crash khi vênh tham số và tự phục hồi khi lỗi driver trang con.
+        Logic điều hướng: Kết hợp Playwright để di chuyển và VisionMachine để vét tri thức.
         """
         results = {}
         with sync_playwright() as p:
-            # Chạy có giao diện để dễ quan sát, slow_mo giúp ổn định tương tác
             browser = p.chromium.launch(headless=False, slow_mo=500) 
             context = browser.new_context()
             page = context.new_page()
             
             if self.login(page):
                 try:
-                    print(f"[🎥Bot phân cảnh] Đang truy cập Module: {module_url}")
-                    # Tăng timeout và wait_until để tránh lỗi Connection Closed khi mạng chậm
+                    print(f"🚀 [🎥 Bot phân cảnh] Truy cập Module: {module_name}")
                     page.goto(module_url, wait_until="networkidle", timeout=60000)
                     self._expand_sidebar(page)
                     sub_links = self._get_sidebar_links(page)
                     
                     if not sub_links:
-                        print(f"⚠️ Không tìm thấy link con nào trong Sidebar của {module_name}")
+                        print(f"⚠️ Không tìm thấy link con trong Sidebar của {module_name}")
                     
                     for link in sub_links:
-                        # Bỏ qua nếu là link trang chủ của module hoặc link rỗng
                         if not link['href'] or link['href'].strip('/') == module_url.strip('/'): 
                             continue
                         
                         print(f"🔍 [MỔ XẺ] : {link['text']}")
                         try:
-                            # Di chuyển tới trang con với timeout an toàn
+                            # 1. Di chuyển tới trang con
                             page.goto(link['href'], wait_until="domcontentloaded", timeout=60000)
-                            # Chờ thêm một chút cho các framework như React/MUI render hết DOM
-                            page.wait_for_timeout(1500) 
-                            
-                            # Lấy URL thực tế sau khi trang đã load (đề phòng redirect bảo mật)
+                            page.wait_for_timeout(2000) # Đợi React/MUI render xong UI
                             actual_form_url = page.url 
-                            print(f"   📍 Link thực tế: {actual_form_url}")
 
-                            # Bước 1: Quét bề nổi (Trang danh sách/Table)
+                            # BƯỚC 1: QUÉT BỀ NỔI (Table, Grid, Nút chung)
+                            # Sử dụng VisionMachine để lấy cấu trúc ban đầu
                             structure = self._extract_page_structure(page)
 
-                            # Bước 2: Bấm "Thêm mới" để vét các trường trong Form ẩn
+                            # BƯỚC 2: QUÉT SÂU (Bấm 'Thêm mới' để vét Input Fields)
                             try:
-                                # Tìm nút Thêm/Tạo mới bằng Regex (không phân biệt hoa thường)
                                 add_btn = page.get_by_role("button").filter(
                                     has_text=re.compile(r"Tạo mới|Thêm|Thêm mới", re.I)
                                 ).first
                                 
                                 if add_btn.is_visible(timeout=3000):
-                                    print(f"   ➕ Đang mở Form 'Thêm mới' để quét trường dữ liệu...")
+                                    print(f"   ➕ Đang mở Form ẩn để vét Fields...")
                                     add_btn.click()
-                                    # Chờ Dialog hoặc Form xuất hiện (phổ biến trong hệ thống của Vũ)
+                                    # Chờ Dialog/Drawer đặc trưng của hệ thống Vàng
                                     page.wait_for_selector(".MuiDialog-root, .MuiDrawer-root, form", timeout=5000)
-                                    page.wait_for_timeout(800)
+                                    page.wait_for_timeout(1000)
                                     
-                                    # Quét sâu trong Form để lấy các input fields
+                                    # Gọi VisionMachine lần 2 để lấy các trường trong Form
                                     deep_struct = self._extract_page_structure(page)
-                                    structure['form_fields'] = deep_struct['form_fields']
                                     
-                                    # Hợp nhất các nút bấm (Actions) trong form vào danh sách chung
-                                    existing_labels = [a.get('label') if isinstance(a, dict) else a for a in structure['actions']]
-                                    for action in deep_struct['actions']:
-                                        label = action.get('label') if isinstance(action, dict) else action
-                                        if label not in existing_labels:
-                                            structure['actions'].append(action)
+                                    # HỢP NHẤT DỮ LIỆU TRI THỨC
+                                    if deep_struct:
+                                        # Lấy danh sách fields từ form ẩn
+                                        structure['form_fields'] = deep_struct.get('form_fields', [])
+                                        
+                                        # Bổ sung các nút bấm mới xuất hiện (Lưu, Hủy, In phiếu...)
+                                        current_actions = [str(a) for a in structure.get('actions', [])]
+                                        for new_act in deep_struct.get('actions', []):
+                                            if str(new_act) not in current_actions:
+                                                structure.setdefault('actions', []).append(new_act)
                                     
-                                    # Đóng Form bằng phím Escape để tránh kẹt giao diện cho trang sau
+                                    # Đóng form để quét trang tiếp theo
                                     page.keyboard.press("Escape")
                                     page.wait_for_timeout(500)
                             except Exception as form_e:
-                                print(f"   ℹ️ Không có form 'Thêm mới' hoặc lỗi quét form: {form_e}")
+                                print(f"   ℹ️ Trang không có form ẩn hoặc lỗi quét sâu: {form_e}")
 
-                            # Bước 3: Bấm "Xuất" để vét định dạng file (nếu có nút Export)
+                            # BƯỚC 3: QUÉT ĐỊNH DẠNG XUẤT (Export)
                             try:
                                 export_btn = page.get_by_role("button").filter(
                                     has_text=re.compile(r"Xuất|Export", re.I)
@@ -193,30 +197,27 @@ class GiaiphapvangScraper:
                                 if export_btn.is_visible(timeout=2000):
                                     export_btn.click()
                                     page.wait_for_timeout(800)
-                                    export_data = self._extract_page_structure(page)
-                                    structure['export_formats'] = export_data['export_formats']
+                                    export_meta = self._extract_page_structure(page)
+                                    structure['export_formats'] = export_meta.get('export_formats', [])
                                     page.keyboard.press("Escape")
-                            except: 
-                                pass
+                            except: pass
 
-                            # ĐÓNG GÓI DỮ LIỆU
+                            # ĐÓNG GÓI DỮ LIỆU ĐỂ LƯU DB
                             data_to_save = {
                                 "module": module_name,
                                 "form": link['text'],
                                 "url": actual_form_url,
-                                "structure": structure,
+                                "structure": structure, # Metadata "vét cạn" nằm ở đây
                                 "updated_at": time.strftime("%Y-%m-%d %H:%M:%S")
                             }
                             
                             results[link['text']] = data_to_save
                             
-                            # LƯU FILE VẬT LÝ: Đã fix vênh tham số nhờ *args ở hàm _save_step
-                            # Lưu ý: Truyền đúng cấu trúc folder để StudioController dễ đọc
+                            # Lưu file vật lý để backup tri thức
                             self._save_step(project_name, module_name, data_to_save, link['text'])
-                            print(f"   ✅ Hoàn thành mổ xẻ: {link['text']}")
+                            print(f"   ✅ Đã nạp xong tri thức cho: {link['text']}")
 
                         except Exception as inner_e:
-                            # Nếu lỗi ở 1 trang con (ví dụ: Timeout), log lại và nhảy sang trang con tiếp theo
                             print(f"   ❌ Lỗi trang con {link['text']} (Bỏ qua): {inner_e}")
                             continue
                             
@@ -248,190 +249,144 @@ class GiaiphapvangScraper:
                             text: a.innerText.split('\\n')[0].trim(), 
                             href: a.href 
                         }));
-        }''')
+        }''')   
 
-    def _extract_page_structure(self, page):
+    def _infer_form_id(self, page):
         """
-        TRÌNH VÉT ĐA TẦNG: 
-        Trích xuất Metadata chi tiết để làm 'não' cho AI điều khiển Browser sau này.
+        Hàm phụ để định danh Form, giúp AI biết đây là nghiệp vụ nào.
         """
-        try: 
-            # Chờ một trong các thành phần chính xuất hiện (Bảng, Input, hoặc Nút)
-            page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, .MuiButton-root", timeout=5000)
-        except: 
-            pass
+        try:
+            # Lấy phần cuối của URL để làm ID (ví dụ: /danh-muc-hang-hoa -> danh-muc-hang-hoa)
+            url_part = page.url.split('/')[-1].split('?')[0] or "home"
+            # Kết hợp với tiêu đề trang để tạo ID duy nhất
+            page_title = page.title().replace(" ", "_")
+            return f"{url_part}_{page_title}"
+        except:
+            return "unknown_form"
+
+    # def _extract_page_structure(self, page):
+    #     """
+    #     Sử dụng VisionMachine để quét UI theo chuẩn OMNI METADATA 2026
+    #     """
+    #     print(f" 👁️ VisionMachine đang nội soi: {page.url}")
         
-        return page.evaluate('''() => {
-            const getCleanText = (el) => {
-                if (!el) return "";
-                // Lấy dòng đầu tiên, xóa các ký tự đặc biệt thường gặp ở label/button (dấu sao bắt buộc, icon...)
-                return el.innerText.split('\\n')[0].replace(/[\\*\\•\\○]/g, '').trim();
-            };
-
-            const getSelector = (el) => {
-                // 1. Ưu tiên Name vì Name trong Form thường cố định theo Backend
-                if (el.name) return `[name="${el.name}"]`;
-                
-                // 2. Ưu tiên Aria-label nếu có (thường dùng cho các nút Icon)
-                const ariaLabel = el.getAttribute('aria-label');
-                if (ariaLabel) return `[aria-label="${ariaLabel}"]`;
-                
-                // 3. Nếu có ID và không phải ID tự sinh của MUI (MUI sinh ID kiểu mui-1, mui-2...)
-                if (el.id && !el.id.startsWith('mui-')) return `#${el.id}`;
-                
-                return ""; 
-            };
+    #     try:
+    #         # 1. Đợi UI ổn định (Material UI/MUI)
+    #         page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, .MuiTable-root", timeout=5000)
             
-            const structure = {
-                columns: [],        // Các cột của bảng
-                form_fields: [],     // Các trường nhập liệu
-                actions: [],         // Các nút chức năng (Thêm, Xuất, Lưu...)
-                row_operations: [],  // Các nút trên từng dòng (Sửa, Xóa...)
-                export_formats: []   // Các định dạng file khi bấm nút Xuất
-            };
+    #         # 2. Gọi VisionMachine thực thi Script "Vét cạn"
+    #         # Lưu ý: Hàm này phải trả về đúng cấu trúc JSON mà mình đã thiết kế
+    #         metadata = self.vision.scan_page(page) 
 
-            // --- 1. VÉT CỘT BẢNG (Dữ liệu hiển thị) ---
-            document.querySelectorAll('.MuiDataGrid-columnHeaderTitle').forEach(h => {
-                const txt = getCleanText(h);
-                if(txt && !structure.columns.includes(txt)) structure.columns.push(txt);
-            });
-
-            // XÁC ĐỊNH KHU VỰC ƯU TIÊN: Nếu có Popup (Dialog/Drawer) đang mở thì chỉ vét trong đó
-            const activeOverlay = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"]');
-            const searchArea = activeOverlay || document.querySelector('main') || document.body;
-
-            // --- 2. VÉT NÚT BẤM (Kèm Logic đoán Icon cho AI) ---
-            searchArea.querySelectorAll('button, a, [role="button"]').forEach(b => {
-                // Nếu không có popup, bỏ qua các nút thuộc sidebar/nav để tránh rác menu chính
-                if (!activeOverlay && (b.closest('nav') || b.closest('[class*="sidebar"]'))) return;
-
-                let label = getCleanText(b) || b.getAttribute('aria-label') || b.title;
+    #         if metadata:
+    #             # 3. Hợp nhất thêm các thông tin định danh
+    #             metadata['form_id'] = self._infer_form_id(page)
+    #             metadata['scanned_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                // Logic đoán nút dựa trên nội dung HTML (Icon) hoặc Class nếu Label trống
-                if (!label || label.length <= 1) {
-                    const html = b.innerHTML.toLowerCase();
-                    const cls = b.className.toLowerCase();
-                    if (html.includes('edit') || cls.includes('edit')) label = "Sửa";
-                    else if (html.includes('delete') || html.includes('trash') || cls.includes('delete')) label = "Xóa";
-                    else if (html.includes('save') || cls.includes('save')) label = "Lưu";
-                    else if (html.includes('add') || html.includes('plus')) label = "Thêm";
-                    else if (html.includes('download') || html.includes('export')) label = "Xuất file";
-                    else if (html.includes('print')) label = "In";
-                    else if (html.includes('close') || html.includes('cancel')) label = "Đóng";
-                }
-
-                if (label && label.length > 1) {
-                    const btnData = {
-                        label: label,
-                        selector: getSelector(b) || `button:has-text("${label}")`,
-                        is_primary: b.classList.contains('MuiButton-containedPrimary') || b.classList.contains('MuiButton-contained')
-                    };
-
-                    // Phân loại: Nút thao tác trên từng dòng bảng hay nút chức năng trang
-                    if (b.closest('.MuiDataGrid-row')) {
-                        if (!structure.row_operations.find(o => o.label === label)) 
-                            structure.row_operations.push(btnData);
-                    } else {
-                        if (!structure.actions.find(a => a.label === label)) 
-                            structure.actions.push(btnData);
-                    }
-                }
-            });
-
-            // --- 3. VÉT TRƯỜNG NHẬP LIỆU (Input, Select, AutoComplete) ---
-            searchArea.querySelectorAll('.MuiFormControl-root, .MuiTextField-root, .MuiInputBase-root').forEach(container => {
-                let inputEl = container.querySelector('input, textarea, select, [role="combobox"]');
-                if (!inputEl) return;
-
-                const labelEl = container.querySelector('label, .MuiFormLabel-root');
-                let labelTxt = labelEl ? getCleanText(labelEl) : (inputEl.placeholder || inputEl.getAttribute('aria-label') || "");
-
-                if (labelTxt && labelTxt.length > 1) {
-                    if (!structure.form_fields.find(f => f.label === labelTxt)) {
-                        structure.form_fields.push({
-                            label: labelTxt,
-                            type: inputEl.type || inputEl.getAttribute('role') || 'text',
-                            selector: getSelector(inputEl) || `input[placeholder*="${labelTxt}"]`,
-                            required: container.innerHTML.includes('Mui-required') || inputEl.required || false,
-                            placeholder: inputEl.placeholder || ""
-                        });
-                    }
-                }
-            });
-
-            // --- 4. VÉT ĐỊNH DẠNG XUẤT FILE (Chỉ vét khi menu Export đang bật) ---
-            document.querySelectorAll('.MuiMenuItem-root, [role="menuitem"]').forEach(item => {
-                const itemTxt = item.innerText.trim();
-                const formats = ['Excel', 'CSV', 'PDF', 'In ấn', 'Download'];
-                if (formats.some(k => itemTxt.includes(k))) {
-                    if (!structure.export_formats.find(e => e.label === itemTxt)) {
-                        structure.export_formats.push({
-                            label: itemTxt,
-                            selector: `text="${itemTxt}"`
-                        });
-                    }
-                }
-            });
-
-            return structure;
-        }''')
+    #             # Gia cố các key quan trọng để AI không bị lỗi khi đọc
+    #             if 'layout' not in metadata: metadata['layout'] = {}
+    #             if 'navigation' not in metadata: 
+    #                 metadata['navigation'] = {"url": page.url, "current_page": page.title()}
+                
+    #             return metadata
+        
+    #     except Exception as e:
+    #         print(f" ❌ Lỗi nội soi tại {page.url}: {e}")
+            
+    #     return {"error": "Scan failed", "layout": {"main_content": {"actions": [], "inputs": []}}}
     
+    async def _extract_page_structure(self, page):       
+        
+        """
+        SỬA LỖI TIMEOUT: Nâng cấp cơ chế đợi UI ổn định cho trang nặng.
+        """
+        print(f" 👁️ VisionMachine đang nội soi: {page.url}")
+        
+        try:
+            # 1. ĐỢI UI (Nhớ thêm await vào các hàm của page nếu con Trinh Sát đang dùng Async)
+            try:
+                await page.wait_for_load_state("networkidle", timeout=20000)
+                await page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, .MuiTable-root, button", timeout=15000)
+            except Exception:
+                print(f" ⚠️ Cảnh báo: UI chưa hoàn toàn ổn định nhưng vẫn tiến hành nội soi...")
+
+            # 2. GỌI VISION MACHINE (Đã có await - Chuẩn!)
+            metadata = await self.vision.scan_page(page, is_async=True)
+
+            if metadata:
+                # 3. Hợp nhất thêm các thông tin định danh
+                # Đảm bảo dùng .get() để không bị Crash nếu metadata rỗng
+                metadata['form_id'] = self._infer_form_id(page)
+                metadata['scanned_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                
+                # Gia cố các key quan trọng
+                if 'layout' not in metadata: 
+                    # Nếu JS trả về main_content thay vì layout, ta gộp nó lại
+                    metadata['layout'] = metadata.get('main_content', {})
+                
+                if 'navigation' not in metadata: 
+                    metadata['navigation'] = {"url": page.url, "current_page": page.title()}
+                
+                return metadata
+        
+        except Exception as e:
+            print(f" ❌ Lỗi nội soi tại {page.url}: {e}")
+            
+        return {"error": "Scan failed", "layout": {"main_content": {"actions": [], "inputs": []}}}
     
     def sync_deep_scan(self, ctrl, project_id, project_folder, module_name, module_url):
-        """Đào sâu và đồng bộ - Bản gia cố chống mất dữ liệu tri thức"""
-        print(f"🚀 [DEEP SCAN] Đang mổ xẻ Module: {module_name}")
+        """Đào sâu và đồng bộ tri thức vào Database"""
+        print(f"🚀 [DEEP SCAN] Đang mổ xẻ và nạp DB Module: {module_name}")
         
-        # 1. Thực hiện quét (Hàm này đã được Vũ tối ưu ở bước trước)
+        # 1. Chạy quy trình quét (Playwright sẽ click Thêm/Sửa để lấy metadata ẩn)
         deep_data = self.update_module_details(project_folder, module_name, module_url)
         
         if not deep_data: 
-            print(f"⚠️ Module {module_name} không có dữ liệu form con hoặc lỗi truy cập.")
+            print(f"⚠️ Module {module_name} không có dữ liệu hoặc lỗi.")
             return False
 
-        # 2. Lấy dữ liệu hiện tại từ DB để so khớp
-        existing_subs = ctrl.get_sub_contents(project_id)
         success_count = 0
-        
         for form_name, f_data in deep_data.items():
-            if not f_data: continue
-            
-            # Đồng nhất cách đặt tiêu đề: Module|Form
+            # Tên định danh duy nhất trong DB: "Kế toán|Danh mục khách hàng"
             full_title = f"{module_name}|{form_name}"
-            existing_item = next((s for s in existing_subs if s['sub_title'] == full_title), None)
             
+            # Lấy metadata "vét cạn" (structure) đã được gom ở bước update_module_details
+            metadata_obj = f_data.get('structure', {})
             form_url = f_data.get('url') or module_url
-            metadata_json = f_data.get('structure', {})
 
-            # KIỂM TRA CHẶN: Nếu quét ra metadata rỗng mà item đã tồn tại, 
-            # có thể là do lỗi render trang, không nên đè metadata rỗng vào DB.
-            if existing_item and not metadata_json.get('form_fields') and not metadata_json.get('columns'):
-                print(f"  ⚠️ Bỏ qua update '{full_title}': Metadata quét được bị rỗng (nghi ngờ lỗi render).")
-                continue
+            # Logic phòng thủ: Không lưu nếu metadata quá rỗng (tránh đè dữ liệu tốt bằng dữ liệu lỗi)
+            if not metadata_obj.get('layout', {}).get('main_content', {}).get('actions'):
+                if not metadata_obj.get('layout', {}).get('main_content', {}).get('inputs'):
+                    print(f" ⚠️ Bỏ qua {full_title}: Metadata rỗng.")
+                    continue
 
             try:
+                # Tìm xem sub_content này đã có trong DB chưa
+                existing_subs = ctrl.get_sub_contents(project_id)
+                existing_item = next((s for s in existing_subs if s['sub_title'] == full_title), None)
+
                 if existing_item:
-                    # CẬP NHẬT: Ưu tiên giữ lại metadata cũ nếu cái mới bị lỗi (logic phòng thủ)
+                    # UPDATE: Cập nhật metadata mới nhất vào DB
                     res = ctrl.update_sub_content(
                         sub_id=existing_item['id'], 
                         new_url=form_url, 
-                        new_metadata=metadata_json,
-                        new_status="scanned" # Đánh dấu là đã quét xong kiến thức
+                        new_metadata=metadata_obj, # Đây là nơi lưu Object JSON cực lớn
+                        new_status="scanned"
                     )
                 else:
-                    # THÊM MỚI:
+                    # INSERT: Thêm mới hoàn toàn
                     res = ctrl.add_sub_content(
                         t_id=project_id,
                         sub_title=full_title,
                         parent_folder=project_folder,
                         url=form_url,
-                        metadata=metadata_json
+                        metadata=metadata_obj
                     )
                 
-                if res: 
-                    success_count += 1
+                if res: success_count += 1
                     
             except Exception as e:
-                print(f"   ❌ Lỗi DB khi xử lý Form '{full_title}': {e}")
+                print(f" ❌ Lỗi DB tại {full_title}: {e}")
                 
-        print(f"📊 Hoàn tất! Đã đồng bộ tri thức: {success_count}/{len(deep_data)} forms.")
+        print(f"📊 Xong! Đã nạp {success_count} 'túi tri thức' vào Database.")
         return True

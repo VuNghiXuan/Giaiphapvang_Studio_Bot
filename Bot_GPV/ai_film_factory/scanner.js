@@ -1,221 +1,159 @@
 /**
- * GIAI PHÁP VÀNG - OMNI METADATA EXTRACTOR 2026 (FINAL COMBINED)
  * Tác giả: Gemini & Thanh Vũ
- * Mục tiêu: Quét sạch lộ trình, menu phân cấp, tọa độ và cấu trúc form ngầm.
+ * Mục tiêu: Vét cạn Metadata phục vụ AI sản xuất Video tự động.
+ * Đặc điểm: Phân tách chế độ Trinh sát (Deep Scan) & Diễn viên (Current View).
  */
-if (!window.scanPage) {
-    window.scanPage = async () => {
-        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-        // --- MODULE 1: UTILS (Xử lý DOM & Thông minh hóa Label) ---
-        const utils = {
-            getCleanText: (el) => {
-                if (!el) return "";
-                return el.innerText.split('\n')[0].replace(/[\*\•\○\+]/g, '').trim();
-            },
-            
-            getSelector: (el) => {
-                if (!el) return "";
-                if (el.name) return `[name="${el.name}"]`;
-                const aria = el.getAttribute('aria-label');
-                if (aria) return `[aria-label="${aria}"]`;
-                const tid = el.getAttribute('data-testid');
-                if (tid) return `[data-testid="${tid}"]`;
-                if (el.id && !el.id.includes('mui-')) return `#${el.id}`;
-                // Selector dự phòng theo nội dung nếu không có ID
-                const text = utils.getCleanText(el);
-                if (text && text.length < 20) return `${el.tagName.toLowerCase()}:has-text("${text}")`;
-                return "";
-            },
+window.scanPage = async () => {
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+    const isActorMode = window.isBotActing === true; // Set từ Python
 
-            getRect: (el) => {
-                const r = el.getBoundingClientRect();
-                return { 
-                    x: Math.round(r.left), 
-                    y: Math.round(r.top), 
-                    w: Math.round(r.width), 
-                    h: Math.round(r.height),
-                    is_visible: r.width > 0 && r.height > 0
-                };
-            },
-
-            getSmartLabel: (btn) => {
-                let label = utils.getCleanText(btn) || btn.title || btn.getAttribute('aria-label') || "";
-                if (label.length <= 1) {
-                    const html = btn.innerHTML.toLowerCase();
-                    const cls = (btn.className || "").toString().toLowerCase();
-                    const svg = btn.querySelector('svg');
-                    const tid = svg?.getAttribute('data-testid')?.toLowerCase() || "";
-
-                    if (html.includes('edit') || cls.includes('edit') || tid.includes('edit')) return "Sửa";
-                    if (html.includes('delete') || html.includes('trash') || tid.includes('delete')) return "Xóa";
-                    if (html.includes('save') || tid.includes('save')) return "Lưu";
-                    if (html.includes('add') || html.includes('plus') || tid.includes('add')) return "Thêm";
-                    if (html.includes('download') || html.includes('export') || tid.includes('download')) return "Xuất file";
-                    if (html.includes('print') || tid.includes('print')) return "In";
-                    if (html.includes('close') || html.includes('cancel') || tid.includes('close')) return "Đóng/Hủy";
-                }
-                return label || "Nút chức năng";
-            }
-        };
-
-        // --- MODULE 2: NAVIGATION (Bản đồ hành trình) ---
-        const getNavigationInfo = () => {
-            const breadcrumbs = Array.from(document.querySelectorAll('.MuiBreadcrumbs-li'))
-                .map(li => utils.getCleanText(li))
-                .filter(txt => txt && txt !== "/");
-            
+    const utils = {
+        getCleanText: (el) => {
+            if (!el) return "";
+            // Giai đoạn 1: Lấy text sạch, bỏ dấu bullet, xuống dòng
+            return el.innerText.split('\n')[0].replace(/[\*\•\○\+]/g, '').trim();
+        },
+        getVisuals: (el) => {
+            const r = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
             return {
-                url: window.location.href,
-                path: window.location.pathname,
-                hierarchy: breadcrumbs, 
-                current_step: breadcrumbs[breadcrumbs.length - 1] || document.title || "Trang chủ"
+                x: Math.round(r.left), y: Math.round(r.top),
+                w: Math.round(r.width), h: Math.round(r.height),
+                color: style.color,
+                bg_color: style.backgroundColor, // Phục vụ: "Nhấn nút xanh lá..."
+                is_visible: r.width > 0 && r.height > 0,
+                opacity: style.opacity
             };
-        };
-
-        // Xác định vùng hoạt động (Ưu tiên Dialog nếu đang mở)
-        const activeOverlay = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"]');
-        const searchArea = activeOverlay || document.querySelector('main') || document.body;
-
-        const metadata = {
-            navigation: getNavigationInfo(),
-            session: {
-                timestamp: new Date().toISOString(),
-                is_popup_open: !!activeOverlay,
-                popup_type: activeOverlay ? (activeOverlay.classList.contains('MuiDialog-root') ? 'DIALOG' : 'DRAWER') : 'NONE'
-            },
-            layout: {
-                sidebar: [],
-                main_content: {},
-                active_form: null,
-                export_formats: []
-            },
-            state: {
-                has_overlay: !!activeOverlay,
-                errors: []
+        },
+        getSelector: (el) => {
+            if (!el) return "";
+            if (el.name) return `[name="${el.name}"]`;
+            if (el.getAttribute('aria-label')) return `[aria-label="${el.getAttribute('aria-label')}"]`;
+            if (el.getAttribute('data-testid')) return `[data-testid="${el.getAttribute('data-testid')}"]`;
+            if (el.id && !el.id.includes('mui-')) return `#${el.id}`;
+            const text = utils.getCleanText(el);
+            return (text && text.length < 20) ? el.tagName.toLowerCase() : el.tagName.toLowerCase();
+        },
+        getSmartLabel: (btn) => {
+            let label = utils.getCleanText(btn) || btn.title || btn.getAttribute('aria-label') || "";
+            if (label.length <= 1) {
+                const inner = btn.innerHTML.toLowerCase();
+                const tid = (btn.querySelector('svg')?.getAttribute('data-testid') || "").toLowerCase();
+                if (inner.includes('edit') || tid.includes('edit')) return "Sửa (Bút chì)";
+                if (inner.includes('delete') || inner.includes('trash') || tid.includes('delete')) return "Xóa (Thùng rác)";
+                if (inner.includes('save') || tid.includes('save')) return "Lưu";
+                if (inner.includes('add') || inner.includes('plus')) return "Thêm mới";
+                if (inner.includes('print')) return "In ấn";
             }
-        };
-
-        // --- MODULE 3: SCANNER (Hàm quét lõi - Contextual Scanner) ---
-        const internalScan = (container, contextName) => {
-            const elements = { actions: [], row_operations: [], inputs: [], tables: [], scrollers: [] };
-
-            // 1. Quét Nút bấm & Tabs
-            container.querySelectorAll('button, a, [role="button"], [role="tab"]').forEach(btn => {
-                // Bỏ qua sidebar nếu đang quét vùng chính
-                if (!activeOverlay && (btn.closest('nav') || btn.closest('[class*="sidebar"]'))) return;
-                
-                const rect = utils.getRect(btn);
-                if (!rect.is_visible) return;
-
-                const label = utils.getSmartLabel(btn);
-                const btnData = {
-                    label: label,
-                    selector: utils.getSelector(btn),
-                    rect: rect,
-                    is_primary: btn.classList.contains('MuiButton-containedPrimary') || btn.classList.contains('MuiButton-contained')
-                };
-
-                if (btn.closest('.MuiDataGrid-row') || btn.closest('tr')) {
-                    elements.row_operations.push(btnData);
-                } else {
-                    elements.actions.push(btnData);
-                }
-            });
-
-            // 2. Quét Inputs (Đặc sản MUI & HTML chuẩn)
-            container.querySelectorAll('.MuiFormControl-root, .MuiTextField-root, .form-group').forEach(f => {
-                const input = f.querySelector('input, textarea, [role="combobox"], select');
-                if (!input) return;
-                
-                const labelEl = f.querySelector('label') || f.previousElementSibling;
-                elements.inputs.push({
-                    label: utils.getCleanText(labelEl) || input.placeholder || "Trường nhập liệu",
-                    selector: utils.getSelector(input),
-                    rect: utils.getRect(input),
-                    type: input.getAttribute('role') === 'combobox' ? 'combobox' : input.type,
-                    required: !!f.querySelector('.Mui-required') || input.required,
-                    value: input.value || ""
-                });
-            });
-
-            // 3. Quét Tables (DataGrid hoặc Table chuẩn)
-            container.querySelectorAll('.MuiDataGrid-root, table').forEach(t => {
-                elements.tables.push({
-                    columns: Array.from(t.querySelectorAll('.MuiDataGrid-columnHeaderTitle, th')).map(utils.getCleanText).filter(v => v),
-                    rect: utils.getRect(t)
-                });
-            });
-
-            // 4. Quét Khả năng cuộn (Dành cho các bảng dài ngành vàng)
-            const scrollEl = container.querySelector('.MuiDataGrid-virtualScroller, .MuiTableContainer-root') || container;
-            if (scrollEl.scrollHeight > scrollEl.clientHeight || scrollEl.scrollWidth > scrollEl.clientWidth) {
-                elements.scrollers.push({
-                    area: contextName,
-                    has_v: scrollEl.scrollHeight > scrollEl.clientHeight,
-                    has_h: scrollEl.scrollWidth > scrollEl.clientWidth
-                });
-            }
-
-            return elements;
-        };
-
-        // --- MODULE 4: EXECUTION (Chạy quy trình quét) ---
-        
-        // A. Quét Sidebar (Menu phân cấp)
-        const sidebarItems = document.querySelectorAll('.MuiListItem-root, .MuiListItemButton-root, .nav-item');
-        let currentParent = null;
-        sidebarItems.forEach(el => {
-            const txt = utils.getCleanText(el);
-            if (!txt) return;
-            const isChild = !!el.closest('.MuiCollapse-root') || el.style.paddingLeft !== "";
-            const item = { label: txt, selector: utils.getSelector(el), active: el.classList.contains('Mui-selected') || el.classList.contains('active') };
-            
-            if (!isChild) {
-                item.children = [];
-                currentParent = item;
-                metadata.layout.sidebar.push(item);
-            } else if (currentParent) {
-                currentParent.children.push(item);
-            }
-        });
-
-        // B. Quét vùng hiển thị hiện tại
-        metadata.layout.main_content = internalScan(searchArea, activeOverlay ? "DIALOG" : "MAIN");
-
-        // C. Quét Export Formats
-        document.querySelectorAll('.MuiMenuItem-root, [role="menuitem"]').forEach(item => {
-            const txt = item.innerText.trim();
-            if (['Excel', 'CSV', 'PDF', 'In'].some(k => txt.includes(k))) {
-                metadata.layout.export_formats.push({ label: txt, selector: `text="${txt}"` });
-            }
-        });
-
-        // D. NỘI SOI FORM (Tự động bấm Thêm Mới để lấy cấu trúc nếu đang ở trang danh sách)
-        const addBtn = metadata.layout.main_content.actions.find(a => /thêm|tạo|add/i.test(a.label));
-        if (!activeOverlay && addBtn) {
-            try {
-                const btnEl = document.querySelector(addBtn.selector);
-                if (btnEl) {
-                    // Chỉ nội soi nếu không có dữ liệu input nào ở Main
-                    if (metadata.layout.main_content.inputs.length === 0) {
-                        btnEl.click();
-                        await sleep(600); 
-                        const dialog = document.querySelector('.MuiDialog-root, [role="dialog"]');
-                        if (dialog) {
-                            metadata.layout.active_form = internalScan(dialog, "DIALOG");
-                            // Đóng form để trả về trạng thái cũ
-                            const closeBtn = Array.from(dialog.querySelectorAll('button')).find(b => /hủy|đóng|close/i.test(utils.getSmartLabel(b)));
-                            if (closeBtn) closeBtn.click();
-                            await sleep(200);
-                        }
-                    }
-                }
-            } catch (e) {
-                metadata.state.errors.push("Lỗi nội soi: " + e.message);
-            }
+            return label || "Nút chức năng";
         }
-
-        return metadata;
     };
-}
+
+    // --- GIAI ĐOẠN 1 & 2: VÉT LÕI (GRID & GLOBAL) ---
+    const internalScan = (container) => {
+        const data = { actions: [], inputs: [], tables: [], scrollers: [] };
+
+        // Quét nút & Cột chức năng
+        container.querySelectorAll('button, a, [role="button"]').forEach(btn => {
+            const vis = utils.getVisuals(btn);
+            if (!vis.is_visible) return;
+            const item = {
+                label: utils.getSmartLabel(btn),
+                selector: utils.getSelector(btn),
+                rect: vis,
+                _el: btn // Giữ lại để click nội bộ
+            };
+            if (btn.closest('tr, .MuiDataGrid-row')) data.tables.push({ type: 'row_op', ...item });
+            else data.actions.push(item);
+        });
+
+        // Quét Bảng & Thanh cuộn kép (Giai đoạn 2)
+        container.querySelectorAll('table, .MuiDataGrid-root').forEach(t => {
+            const scrollEl = t.querySelector('.MuiDataGrid-virtualScroller') || t;
+            const cols = Array.from(t.querySelectorAll('th, .MuiDataGrid-columnHeaderTitle')).map(utils.getCleanText).filter(v => v);
+            data.tables.push({
+                columns: cols,
+                count: cols.length,
+                needs_h_scroll: scrollEl.scrollWidth > scrollEl.clientWidth, // Bảng rộng quá màn hình
+                rect: utils.getVisuals(t)
+            });
+        });
+
+        // Quét Input & Combobox (Giai đoạn 3)
+        container.querySelectorAll('.MuiFormControl-root, .form-group').forEach(f => {
+            const input = f.querySelector('input, textarea, [role="combobox"], select');
+            if (!input) return;
+            data.inputs.push({
+                label: utils.getCleanText(f.querySelector('label') || f),
+                selector: utils.getSelector(input),
+                type: input.getAttribute('role') === 'combobox' ? 'combobox_linked' : input.type,
+                required: !!f.querySelector('.Mui-required'),
+                rect: utils.getVisuals(input)
+            });
+        });
+
+        return data;
+    };
+
+    // --- GIAI ĐOẠN 3: NỘI SOI ĐỆ QUY (TRINH SÁT MODE) ---
+    const deepScan = async (btnObj) => {
+        if (isActorMode || !btnObj?._el) return null;
+        try {
+            btnObj._el.click();
+            await sleep(1200);
+            const dialog = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"], .modal-content');
+            if (dialog) {
+                const formMetadata = internalScan(dialog);
+                // Reset UI: Tìm nút Đóng/Hủy
+                const closeBtn = Array.from(dialog.querySelectorAll('button')).find(b => /đóng|hủy|close|x/i.test(utils.getSmartLabel(b).toLowerCase()));
+                if (closeBtn) { closeBtn.click(); await sleep(600); }
+                return formMetadata;
+            }
+        } catch (e) { console.error("DeepScan Failed", e); }
+        return null;
+    };
+
+    // --- TỔNG HỢP KẾT QUẢ ---
+    const activeOverlay = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"]');
+    const mainArea = activeOverlay || document.querySelector('main') || document.body;
+    const scanResult = internalScan(mainArea);
+
+    const metadata = {
+        session: { url: window.location.href, title: document.title, mode: isActorMode ? "ACTOR" : "SCOUT" },
+        navigation: {
+            breadcrumbs: Array.from(document.querySelectorAll('.MuiBreadcrumbs-li')).map(utils.getCleanText).filter(t => t && t !== "/"),
+            sidebar: (() => {
+                const side = document.querySelector('nav, [class*="sidebar"]');
+                return {
+                    has_scroll: side ? side.scrollHeight > side.clientHeight : false, // "Menu này dài..."
+                    items: Array.from(document.querySelectorAll('.MuiListItem-root')).map(el => ({ label: utils.getCleanText(el), selector: utils.getSelector(el) }))
+                };
+            })()
+        },
+        main_content: scanResult,
+        active_form: activeOverlay ? scanResult : null
+    };
+
+    // Logic Trinh sát tự động (Chỉ chạy khi Scout Mode)
+    if (!isActorMode && !activeOverlay) {
+        const target = scanResult.actions.find(a => /thêm|tạo/i.test(a.label.toLowerCase())) || scanResult.tables.find(t => t.type === 'row_op');
+        if (target) {
+            console.log("🕵️ Trinh sát đang nội soi...");
+            metadata.active_form = await deepScan(target);
+        }
+    }
+
+    // --- CLEANUP ĐỆ QUY (QUAN TRỌNG NHẤT) ---
+    const finalCleanup = (obj) => {
+        if (!obj || typeof obj !== 'object') return;
+        if (Array.isArray(obj)) obj.forEach(finalCleanup);
+        else {
+            delete obj._el; // Xóa sạch dấu vết Element trước khi về Python
+            Object.values(obj).forEach(finalCleanup);
+        }
+    };
+    finalCleanup(metadata);
+
+    return metadata;
+};

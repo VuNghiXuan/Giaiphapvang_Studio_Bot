@@ -1,7 +1,7 @@
 class EffectMachine:
     @staticmethod
     async def show_subtitle(page, text):
-        """Dùng cssText để ép trình duyệt render ngay lập tức"""
+        """Hiển thị Subtitle trực tiếp trên Browser để quay video"""
         await page.evaluate("""(txt) => {
             let sub = document.getElementById('bot-subtitle');
             if (!sub) {
@@ -13,54 +13,65 @@ class EffectMachine:
                 sub.style.display = 'none';
                 return;
             }
+            // Style đậm chất công nghệ cho ngành Vàng
             sub.style.cssText = `
                 position: fixed !important;
-                bottom: 80px !important;
+                bottom: 100px !important;
                 left: 50% !important;
                 transform: translateX(-50%) !important;
-                background-color: rgba(0, 0, 0, 0.9) !important;
-                color: #00FFFF !important;
-                padding: 15px 30px !important;
-                border-radius: 12px !important;
-                font-size: 32px !important;
-                font-family: Arial, sans-serif !important;
-                font-weight: bold !important;
+                background: rgba(0, 0, 0, 0.85) !important;
+                color: #FFD700 !important; 
+                padding: 12px 25px !important;
+                border-radius: 8px !important;
+                font-size: 30px !important;
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+                font-weight: 600 !important;
                 z-index: 2147483647 !important;
                 text-align: center !important;
-                max-width: 85% !important;
-                border: 3px solid #00FFFF !important;
-                box-shadow: 0 0 20px #00FFFF !important;
+                max-width: 80% !important;
+                border-left: 5px solid #FFD700 !important;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
                 display: block !important;
+                transition: all 0.3s ease !important;
             `;
             sub.innerText = txt;
         }""", text)
 
     @staticmethod
-    async def click_ripple(page, x, y):
-        """Hiệu ứng Ripple màu Hồng Neon cực mạnh"""
-        # await page.evaluate("""({x, y}) => {
-        #     const r = document.createElement('div');
-        #     document.body.appendChild(r);
-        #     r.style.cssText = `
-        #         position: fixed !important;
-        #         left: ${x}px !important;
-        #         top: ${y}px !important;
-        #         width: 50px !important;
-        #         height: 50px !important;
-        #         background-color: #FF1493 !important;
-        #         border-radius: 50% !important;
-        #         pointer-events: none !important;
-        #         z-index: 2147483647 !important;
-        #         transform: translate(-50%, -50%) scale(0) !important;
-        #         transition: transform 0.4s ease-out, opacity 0.4s ease-out !important;
-        #         box-shadow: 0 0 20px #FF1493 !important;
-        #     `;
+    async def apply_click_effect(page, x, y):
+        """Hiệu ứng Ripple màu Hồng Neon khi Click"""
+        await page.evaluate("""({x, y}) => {
+            const ripple = document.createElement('div');
+            document.body.appendChild(ripple);
             
-        #     requestAnimationFrame(() => {
-        #         r.style.transform = 'translate(-50%, -50%) scale(3) !important';
-        #         r.style.opacity = '0 !important';
-        #     });
-        #     setTimeout(() => r.remove(), 600);
-        # }""", {'x': x, 'y': y})
+            const baseStyle = `
+                position: fixed !important;
+                left: ${x}px !important;
+                top: ${y}px !important;
+                width: 20px !important;
+                height: 20px !important;
+                background: none !important;
+                border: 4px solid #FF1493 !important;
+                border-radius: 50% !important;
+                pointer-events: none !important;
+                z-index: 2147483647 !important;
+                transform: translate(-50%, -50%) scale(0) !important;
+                opacity: 1 !important;
+                box-shadow: 0 0 15px #FF1493 !important;
+            `;
+            ripple.style.cssText = baseStyle;
 
-        pass
+            // Dùng requestAnimationFrame để đảm bảo trình duyệt nhận diện được sự thay đổi style
+            requestAnimationFrame(() => {
+                ripple.style.transition = 'transform 0.5s ease-out, opacity 0.5s ease-out !important';
+                ripple.style.transform = 'translate(-50%, -50%) scale(4) !important';
+                ripple.style.opacity = '0 !important';
+            });
+
+            setTimeout(() => ripple.remove(), 600);
+        }""", {'x': x, 'y': y})
+
+    @staticmethod
+    async def clear_effects(page):
+        """Dọn dẹp subtitle trước khi qua bước mới"""
+        await page.evaluate("() => { const s = document.getElementById('bot-subtitle'); if(s) s.style.display = 'none'; }")

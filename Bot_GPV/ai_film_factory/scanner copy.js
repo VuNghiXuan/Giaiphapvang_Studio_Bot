@@ -1,222 +1,208 @@
 /**
- * GIAI PHÁP VÀNG - SCANNER ENGINE PRO 2026
- * Chế độ: Digital Twin - Diễn xuất kịch bản trình tự
+ * GIAI PHÁP VÀNG - OMNI METADATA EXTRACTOR (ULTIMATE VET)
+ * Tác giả: Gemini & Thanh Vũ
+ * Mục tiêu: Vét sạch Sidebar, Table, Form lồng nhau mà không gây lỗi Selector.
  */
 
-window.scanPage = () => {
-    const getCleanText = (el) => {
-        if (!el) return "";
-        return el.innerText.split('\n')[0].replace(/[\*\•\○\+]/g, '').trim();
-    };
+window.scanPage = async () => {
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-    const getSelector = (el) => {
-        if (el.name) return `[name="${el.name}"]`;
-        const ariaLabel = el.getAttribute('aria-label');
-        if (ariaLabel) return `[aria-label="${ariaLabel}"]`;
-        if (el.id && !el.id.includes('mui-')) return `#${el.id}`;
-        
-        // Nếu là input của MUI, thường có ID mui-X, ta lấy name hoặc placeholder
-        if (el.tagName === 'INPUT') {
-            const placeholder = el.getAttribute('placeholder');
-            if (placeholder) return `input[placeholder="${placeholder}"]`;
-        }
-        return ""; 
-    };
-
-    const getRect = (el) => {
-        const rect = el.getBoundingClientRect();
-        return {
-            x: rect.left, y: rect.top, width: rect.width, height: rect.height,
-            is_visible: rect.width > 0 && rect.height > 0 && rect.top < window.innerHeight
-        };
-    };
-
-    const structure = {
-        // 1. ĐỊNH VỊ (Bot đang ở đâu?)
-        location: {
-            url: window.location.href,
-            title: document.title,
-            breadcrumbs: [],
-            active_module: "", // Module lớn đang chọn (VD: Hệ thống)
-            active_tab: ""     // Tab con đang chọn (VD: Chi nhánh)
+    const utils = {
+        getCleanText: (el) => {
+            if (!el) return "";
+            return el.innerText.split('\n')[0].replace(/[\*\•\○\+]/g, '').trim();
         },
-        // 2. ĐIỀU HƯỚNG (Đường đi nước bước)
-        navigation: {
-            sidebar_menu: [], // Cấu trúc Menu Cha-Con {label, parent, is_sub_item, selector}
-            tabs: []          // Các thẻ chuyển đổi trong trang {label, is_active, selector}
-        },
-        // 3. TƯƠNG TÁC (Có gì để bấm/nhập?)
-        content: {
-            table_columns: [],
-            primary_actions: [], // Các nút "Tạo mới", "Thêm", "Lưu" (Nút to)
-            row_operations: [],  // Nút Sửa/Xóa trên từng dòng
-            form_fields: [],     // Các ô nhập liệu {label, value, is_autocomplete, is_select...}
-            pagination: null     // Thông tin phân trang và cuộn ngang của bảng
-        },
-        // 4. TRẠNG THÁI HỆ THỐNG & HIỂN THỊ
-        state: {
-            is_loading: !!document.querySelector('.MuiCircularProgress-root, .MuiLinearProgress-root'),
-            is_dialog_open: !!document.querySelector('.MuiDialog-root, [role="dialog"]'),
+        getSelector: (el) => {
+            if (!el) return "";
+            if (el.name) return `[name="${el.name}"]`;
+            const aria = el.getAttribute('aria-label');
+            if (aria) return `[aria-label="${aria}"]`;
+            const tid = el.getAttribute('data-testid');
+            if (tid) return `[data-testid="${tid}"]`;
+            if (el.id && !el.id.includes('mui-')) return `#${el.id}`;
             
-            // Chi tiết trạng thái cuộn để Bot biết đường "Lăn chuột"
-            scroll_status: {
-                sidebar_can_scroll: false,    // Sidebar có bị dài quá không
-                table_horizontal_scroll: false, // Bảng có cần kéo ngang để xem hết cột không
-                table_vertical_scroll: false,   // Bảng có nhiều dòng cần cuộn không
-                body_vertical_scroll: document.body.scrollHeight > window.innerHeight
+            // KHÔNG dùng :has-text ở đây để tránh lỗi querySelector phía Browser
+            const text = utils.getCleanText(el);
+            if (text && text.length < 20) return `${el.tagName.toLowerCase()}`; 
+            return el.tagName.toLowerCase();
+        },
+        getRect: (el) => {
+            const r = el.getBoundingClientRect();
+            const style = window.getComputedStyle(el);
+            return { 
+                x: Math.round(r.left), y: Math.round(r.top), 
+                w: Math.round(r.width), h: Math.round(r.height),
+                bg_color: style.backgroundColor,
+                is_visible: r.width > 0 && r.height > 0
+            };
+        },
+        getSmartLabel: (btn) => {
+            let label = utils.getCleanText(btn) || btn.title || btn.getAttribute('aria-label') || "";
+            if (label.length <= 1) {
+                const html = btn.innerHTML.toLowerCase();
+                const cls = (btn.className || "").toString().toLowerCase();
+                const tid = (btn.querySelector('svg')?.getAttribute('data-testid') || "").toLowerCase();
+                if (html.includes('edit') || cls.includes('edit') || tid.includes('edit')) return "Sửa";
+                if (html.includes('delete') || html.includes('trash') || tid.includes('delete')) return "Xóa";
+                if (html.includes('save') || tid.includes('save')) return "Lưu";
+                if (html.includes('add') || html.includes('plus') || tid.includes('add')) return "Thêm mới";
+                if (html.includes('download') || html.includes('export') || tid.includes('download')) return "Xuất file";
+                if (html.includes('print') || tid.includes('print')) return "In";
+                if (html.includes('close') || html.includes('cancel') || tid.includes('close')) return "Đóng/Hủy";
             }
+            return label || "Nút chức năng";
         }
     };
 
-    // --- BƯỚC 1: XÁC ĐỊNH VỊ TRÍ & BREADCRUMBS ---
-    document.querySelectorAll('.MuiBreadcrumbs-li').forEach(b => {
-        const txt = getCleanText(b);
-        if(txt && txt !== "/") structure.location.breadcrumbs.push(txt);
-    });
+    // --- MODULE: CẤU TRÚC VÉT LÕI ---
+    const internalScan = (container, contextName) => {
+        const elements = { 
+            actions: [], 
+            row_operations: [], 
+            inputs: [], 
+            tables: [], 
+            scrollers: [],
+            error_hints: [] 
+        };
 
-    // --- BƯỚC 2: QUÉT SIDEBAR (LẤY ACTIVE MODULE CHUẨN) ---
-    const allSidebarItems = document.querySelectorAll('.MuiListItemButton-root');
-    allSidebarItems.forEach(item => {
-        const label = getCleanText(item);
-        if (!label) return;
-
-        const is_active = item.classList.contains('Mui-selected') || item.className.includes('active');
-        
-        // Logic tìm Module Cha:
-        if (is_active) {
-            // Kiểm tra xem item này có phải là con (nằm trong Collapse) không
-            const collapseParent = item.closest('.MuiCollapse-root');
-            if (collapseParent) {
-                // Nếu là con, module cha là cái nút ngay phía trên thẻ Collapse
-                const parentEl = collapseParent.previousElementSibling?.querySelector('.MuiListItemText-root') 
-                               || collapseParent.previousElementSibling;
-                structure.location.active_module = getCleanText(parentEl);
-            } else {
-                // Nếu không nằm trong Collapse, bản thân nó là Module cha
-                structure.location.active_module = label;
-            }
-        }
-
-        // Vẫn lưu vào menu list để AI biết đường điều hướng
-        const collapseParent = item.closest('.MuiCollapse-root');
-        structure.navigation.sidebar_menu.push({
-            label: label,
-            parent: collapseParent ? getCleanText(collapseParent.previousElementSibling) : "",
-            is_active: is_active,
-            is_sub_item: !!collapseParent,
-            selector: getSelector(item) || `.MuiListItemButton-root:has-text("${label}")`
-        });
-    });
-
-    // --- BƯỚC 3: QUÉT TABS (VD: THẺ CHI NHÁNH TRONG THÔNG TIN CÔNG TY) ---
-    const tabArea = document.querySelector('.MuiTabs-root');
-    if (tabArea) {
-        tabArea.querySelectorAll('button[role="tab"]').forEach(tab => {
-            const label = getCleanText(tab);
-            const is_active = tab.classList.contains('Mui-selected') || tab.getAttribute('aria-selected') === 'true';
-            if (is_active) structure.location.active_tab = label;
-            structure.navigation.tabs.push({
-                label, is_active,
-                selector: `button[role="tab"]:has-text("${label}")`
-            });
-        });
-    }
-
-    // --- BƯỚC 4: QUÉT NỘI DUNG CHÍNH (FORM/TABLE) & SCROLLING ---
-    const activeOverlay = document.querySelector('.MuiDialog-root, [role="dialog"]');
-    const searchArea = activeOverlay || document.querySelector('main') || document.body;
-
-    // 4.1. KIỂM TRA TRẠNG THÁI CUỘN (SCROLL)
-    // Sidebar của Mui thường nằm trong .MuiDrawer-paper hoặc .MuiDrawer-root
-    const sidebar = document.querySelector('.MuiDrawer-paper, .MuiDrawer-root');
-    const tableEl = document.querySelector('.MuiDataGrid-root, table');
-    const tableScrollEl = tableEl ? tableEl.querySelector('.MuiDataGrid-virtualScroller, .MuiTableContainer-root') : null;
-
-    structure.state.scroll_status = {
-        sidebar_can_scroll: sidebar ? sidebar.scrollHeight > sidebar.clientHeight : false,
-        table_horizontal_scroll: tableScrollEl ? tableScrollEl.scrollWidth > tableScrollEl.clientWidth : false,
-        table_vertical_scroll: tableScrollEl ? tableScrollEl.scrollHeight > tableScrollEl.clientHeight : false,
-        body_vertical_scroll: document.body.scrollHeight > window.innerHeight
-    };
-
-    // 4.2. PHÂN LOẠI NÚT BẤM (CỨNG & MỀM)
-    searchArea.querySelectorAll('button, a, [role="button"]').forEach(b => {
-        if (!activeOverlay && b.closest('.MuiDrawer-root')) return;
-
-        let label = getCleanText(b) || b.getAttribute('aria-label') || b.title || "";
-        const html = (b.innerHTML + b.className).toLowerCase();
-        
-        // Nâng cấp bộ lọc Icon cho hệ thống Giai Pháp Vàng
-        if (label.length <= 1) {
-            if (html.match(/add|plus|create/)) label = "Tạo mới";
-            else if (html.match(/edit|pencil/)) label = "Sửa";
-            else if (html.match(/delete|trash|remove/)) label = "Xóa";
-            else if (html.match(/save|check|content-save/)) label = "Lưu";
-            else if (html.match(/close|cancel|times|exit/)) label = "Hủy/Đóng";
-            else if (html.match(/print/)) label = "In ấn";
-            else if (html.match(/download|export/)) label = "Xuất file";
-            else if (html.match(/refresh|sync/)) label = "Làm mới";
-        }
-
-        if (label && label.length > 1) {
-            const btnData = {
-                label,
-                selector: getSelector(b) || `button:has-text("${label}")`,
-                rect: getRect(b),
-                is_disabled: b.disabled || b.classList.contains('Mui-disabled')
+        // 1. Vét Nút & Toolbar
+        container.querySelectorAll('button, a, [role="button"], [role="tab"]').forEach(btn => {
+            const rect = utils.getRect(btn);
+            if (!rect.is_visible) return;
+            const label = utils.getSmartLabel(btn);
+            // LƯU Ý: _el là tham chiếu trực tiếp, chỉ dùng nội bộ trong JS này
+            const btnData = { 
+                label, 
+                selector: utils.getSelector(btn), 
+                rect, 
+                is_primary: btn.classList.contains('MuiButton-containedPrimary'),
+                _el: btn 
             };
             
-            // Phân loại nâng cao
-            const isRowOp = b.closest('.MuiDataGrid-row, tr, .MuiDataGrid-actionsCell');
-            if (isRowOp) {
-                structure.content.row_operations.push(btnData);
+            if (btn.closest('.MuiDataGrid-row') || btn.closest('tr')) {
+                elements.row_operations.push(btnData);
             } else {
-                // Nếu đang mở Dialog, chỉ lấy các nút trong Dialog làm Primary Actions
-                if (activeOverlay) {
-                    if (activeOverlay.contains(b)) structure.content.primary_actions.push(btnData);
-                } else {
-                    structure.content.primary_actions.push(btnData);
-                }
+                elements.actions.push(btnData);
             }
-        }
-    });
-
-    // 4.3. QUÉT FORM FIELDS (Dành cho nghiệp vụ nhập liệu)
-    searchArea.querySelectorAll('.MuiFormControl-root, .MuiTextField-root, .MuiBox-root:has(input)').forEach(container => {
-        let input = container.querySelector('input, textarea, select, [role="combobox"]');
-        if (!input) return;
-
-        let labelEl = container.querySelector('label');
-        let label = labelEl ? getCleanText(labelEl) : (input.placeholder || input.getAttribute('aria-label') || "");
-        
-        if (label) {
-            structure.content.form_fields.push({
-                label,
-                current_value: input.value || "",
-                is_autocomplete: !!container.querySelector('.MuiAutocomplete-root'),
-                is_select: !!container.querySelector('.MuiSelect-root') || input.tagName === 'SELECT',
-                required: container.innerHTML.includes('Mui-required') || input.required,
-                selector: getSelector(input) || `label:has-text("${label}") + div input, input[placeholder*="${label}"]`
-            });
-        }
-    });
-
-    // 4.4. QUÉT CẤU TRÚC BẢNG (Dành cho báo cáo/danh sách)
-    if (tableEl) {
-        // Lấy tiêu đề cột (Mui DataGrid)
-        tableEl.querySelectorAll('.MuiDataGrid-columnHeaderTitle, th').forEach(h => {
-            const colTitle = getCleanText(h);
-            if (colTitle) structure.content.table_columns.push(colTitle);
         });
 
-        // Thông tin phân trang
-        const paginationEl = document.querySelector('.MuiTablePagination-root');
-        structure.content.pagination = {
-            has_horizontal_scroll: structure.state.scroll_status.table_horizontal_scroll,
-            current_page: paginationEl ? (paginationEl.querySelector('.MuiTablePagination-caption')?.innerText || "1") : "1",
-            rows_per_page: paginationEl ? (paginationEl.querySelector('.MuiTablePagination-select')?.innerText || "All") : "All"
-        };
+        // 2. Vét Input & Combobox
+        container.querySelectorAll('.MuiFormControl-root, .MuiTextField-root, .form-group').forEach(f => {
+            const input = f.querySelector('input, textarea, [role="combobox"], select');
+            if (!input) return;
+            const labelEl = f.querySelector('label') || f.previousElementSibling;
+            const errorEl = f.querySelector('.Mui-error, .invalid-feedback');
+            
+            elements.inputs.push({
+                label: utils.getCleanText(labelEl) || input.placeholder || "Trường nhập liệu",
+                selector: utils.getSelector(input),
+                rect: utils.getRect(input),
+                type: input.getAttribute('role') === 'combobox' ? 'combobox_linked' : input.type,
+                required: !!f.querySelector('.Mui-required') || input.required,
+                has_error: !!errorEl,
+                error_msg: errorEl ? errorEl.innerText : ""
+            });
+        });
+
+        // 3. Vét Bảng
+        container.querySelectorAll('.MuiDataGrid-root, table').forEach(t => {
+            const columns = Array.from(t.querySelectorAll('.MuiDataGrid-columnHeaderTitle, th')).map(utils.getCleanText).filter(v => v);
+            const scrollEl = t.querySelector('.MuiDataGrid-virtualScroller') || t;
+            
+            elements.tables.push({
+                columns: columns,
+                has_action_col: columns.some(c => /chức năng|thao tác|công cụ/i.test(c)),
+                rect: utils.getRect(t),
+                scroll_info: {
+                    can_scroll_h: scrollEl.scrollWidth > scrollEl.clientWidth,
+                    can_scroll_v: scrollEl.scrollHeight > scrollEl.clientHeight
+                }
+            });
+        });
+
+        return elements;
+    };
+
+    // --- MODULE: NỘI SOI ĐỆ QUY (Sửa lỗi Click bằng Element trực tiếp) ---
+    const runDeepScan = async (targetBtnObj) => {
+        if (!targetBtnObj || !targetBtnObj._el) return null;
+        
+        try {
+            targetBtnObj._el.click();
+            await sleep(1000); 
+
+            const dialog = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"]');
+            if (dialog) {
+                const details = internalScan(dialog, "DIALOG_LEVEL_1");
+                
+                // Vét Sub-table trong Form nếu có
+                const subTable = dialog.querySelector('.MuiDataGrid-root, table');
+                if (subTable) {
+                    details.nested_table = internalScan(subTable, "NESTED_TABLE");
+                }
+
+                // Tìm nút đóng để reset trạng thái UI
+                const closeBtn = Array.from(dialog.querySelectorAll('button')).find(b => /hủy|đóng|close|x/i.test(utils.getSmartLabel(b).toLowerCase()));
+                if (closeBtn) { closeBtn.click(); await sleep(500); }
+                
+                return details;
+            }
+        } catch (e) {
+            console.error("DeepScan Error:", e);
+        }
+        return null;
+    };
+
+    // --- THỰC THI QUÉT TỔNG THỂ ---
+    const activeOverlay = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"]');
+    const mainArea = activeOverlay || document.querySelector('main') || document.body;
+    const mainScanResult = internalScan(mainArea, "MAIN_VIEW");
+
+    const metadata = {
+        navigation: {
+            url: window.location.href,
+            hierarchy: Array.from(document.querySelectorAll('.MuiBreadcrumbs-li')).map(li => utils.getCleanText(li)).filter(t => t && t !== "/"),
+            current_page: document.title
+        },
+        layout: {
+            sidebar: (() => {
+                const sideEl = document.querySelector('nav, [class*="sidebar"]');
+                return {
+                    items: Array.from(document.querySelectorAll('.MuiListItem-root, .nav-item')).map(el => ({
+                        label: utils.getCleanText(el),
+                        selector: utils.getSelector(el),
+                    })),
+                    has_scroll: sideEl ? sideEl.scrollHeight > sideEl.clientHeight : false
+                };
+            })(),
+            main_content: mainScanResult,
+            active_form: null
+        }
+    };
+
+    // --- NỘI SOI HÀNH ĐỘNG ---
+    if (!activeOverlay) {
+        // Ưu tiên nút "Thêm mới" hoặc "Tạo mới"
+        const addBtn = mainScanResult.actions.find(a => /thêm|tạo/i.test(a.label.toLowerCase()));
+        if (addBtn) {
+            metadata.layout.active_form = await runDeepScan(addBtn);
+        } else {
+            // Nếu không có, nội soi nút "Sửa" đầu tiên để xem cấu trúc trường dữ liệu
+            const editBtn = mainScanResult.row_operations[0];
+            if (editBtn) metadata.layout.active_form = await runDeepScan(editBtn);
+        }
     }
 
-    return structure;
+    // --- CLEANUP: Xóa tham chiếu Element trước khi trả về Python (Quan trọng!) ---
+    const removeReferences = (obj) => {
+        if (!obj) return;
+        if (obj.actions) obj.actions.forEach(a => delete a._el);
+        if (obj.row_operations) obj.row_operations.forEach(a => delete a._el);
+        if (obj.active_form) removeReferences(obj.active_form);
+    };
+    removeReferences(metadata.layout.main_content);
+    if (metadata.layout.active_form) removeReferences(metadata.layout.active_form);
+
+    metadata.form_id = `metadata_${new Date().getTime()}`;
+    return metadata;
 };

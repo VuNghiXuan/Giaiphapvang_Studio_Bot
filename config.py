@@ -23,6 +23,12 @@ class Config:
         {"id": "FLOW", "label": "Kết nối quy trình", "icon": "🔗"}
     ]
 
+    ACTION_MAP = {
+    "ADD": ["Thêm mới", "Tạo mới", "Thêm"],
+    "EDIT": ["Sửa", "Cập nhật", "Edit"],
+    "DEL": ["Xóa", "Hủy", "Delete"]
+}
+
     # --- ĐƯỜNG DẪN LƯU TRỮ (Paths) ---
     BASE_STORAGE = os.path.abspath("./storage")
     SCRIPTS_DIR_NAME = "scripts"

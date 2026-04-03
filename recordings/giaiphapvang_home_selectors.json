@@ -1,0 +1,128 @@
+[
+    {
+        "type": "button",
+        "text": "4",
+        "href": "",
+        "selector": "internal:role=button[name=\"4\"i]"
+    },
+    {
+        "type": "button",
+        "text": "S",
+        "href": "",
+        "selector": "internal:role=button[name=\"S\"i]"
+    },
+    {
+        "type": "link",
+        "text": "",
+        "href": "/",
+        "selector": "a[href='/']"
+    },
+    {
+        "type": "link",
+        "text": "Quản lý sản phẩm",
+        "href": "product-management",
+        "selector": "internal:role=link[name=\"Quản lý sản phẩm\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Mua bán",
+        "href": "trading",
+        "selector": "internal:role=link[name=\"Mua bán\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Cầm đồ",
+        "href": "pawn-service",
+        "selector": "internal:role=link[name=\"Cầm đồ\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Quản lý thu chi",
+        "href": "cash-flow-management",
+        "selector": "internal:role=link[name=\"Quản lý thu chi\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Bảng giá vàng",
+        "href": "gold-rate-table",
+        "selector": "internal:role=link[name=\"Bảng giá vàng\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Quản lý kho",
+        "href": "/inventory-management/",
+        "selector": "internal:role=link[name=\"Quản lý kho\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Quản lý soạn dẻ",
+        "href": "jewelry-assembly-management",
+        "selector": "internal:role=link[name=\"Quản lý soạn dẻ\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Quản lý thợ",
+        "href": "goldsmith-management",
+        "selector": "internal:role=link[name=\"Quản lý thợ\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Kế toán",
+        "href": "accounting",
+        "selector": "internal:role=link[name=\"Kế toán\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Nhân sự",
+        "href": "/human-resources/",
+        "selector": "internal:role=link[name=\"Nhân sự\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Chăm sóc khách hàng",
+        "href": "/customer-service/",
+        "selector": "internal:role=link[name=\"Chăm sóc khách hàng\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Giao dịch nhà cung cấp",
+        "href": "/supplier-transactions/",
+        "selector": "internal:role=link[name=\"Giao dịch nhà cung cấp\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Báo cáo kinh doanh",
+        "href": "/business-report/",
+        "selector": "internal:role=link[name=\"Báo cáo kinh doanh\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Tin tức",
+        "href": "/news/",
+        "selector": "internal:role=link[name=\"Tin tức\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Hướng dẫn sử dụng",
+        "href": "/user-guide/",
+        "selector": "internal:role=link[name=\"Hướng dẫn sử dụng\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Hệ thống",
+        "href": "/dashboard/",
+        "selector": "internal:role=link[name=\"Hệ thống\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Điều khoản sử dụng",
+        "href": "/term-of-use/",
+        "selector": "internal:role=link[name=\"Điều khoản sử dụng\"i]"
+    },
+    {
+        "type": "link",
+        "text": "Chính sách bảo mật",
+        "href": "/privacy-policy/",
+        "selector": "internal:role=link[name=\"Chính sách bảo mật\"i]"
+    }
+]

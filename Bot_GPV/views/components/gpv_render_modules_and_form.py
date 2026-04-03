@@ -6,7 +6,10 @@ from Bot_GPV.core.gpv_ai_logic_knowledge import AIScripts
 # from Bot_GPV.views.components.gpv_component import GPVComponent
 from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
 from config import Config
+
 import asyncio
+import nest_asyncio
+nest_asyncio.apply()
 
 # Khởi tạo bộ não AI
 ai_script = AIScripts()
@@ -81,7 +84,10 @@ def render_gpv_logic(ctrl, p, ai_script):
 
 
 def render_gpv_forms(ctrl, p, modul_name, ai_script):
-    """Giao diện Cấp 2: Quét sâu từng Form, đồng bộ Metadata vào DB"""
+    """
+    Giao diện Cấp 2: Quét sâu từng Form, đồng bộ Metadata vào DB.
+    Đã tối ưu truy xuất theo cấu trúc Omni Metadata 2026.
+    """
     project_folder = p.get('folder_name', "Giai_Phap_Vang")
     
     c1, c2 = st.columns([3, 1.2])
@@ -93,21 +99,59 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
     
     if c2.button("🔍 CẬP NHẬT FORM (CẤP 2)", type="primary", use_container_width=True, key="btn_deep_scan"):
         with st.spinner(f"Đang mổ xẻ Module {modul_name}..."):
-            # 1. Lấy dữ liệu mới nhất từ DB
+            # 1. Lấy dữ liệu mới nhất từ DB để so khớp
             db_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
             
-            # 2. Tìm URL của Module Home
+            # 2. Tìm URL của Module Home (điểm bắt đầu để quét sâu)
             mod_home = next((s for s in db_subs if s['sub_title'] == f"{modul_name}|Home"), None)
-            target_url = mod_home.get('url') if mod_home and mod_home.get('url') else mod_home.get('status') if mod_home else None
+            target_url = mod_home.get('url') if mod_home else None
             
+            # if target_url:
+            #     extractor = GiaiphapvangScraper()
+            #     try:
+            #         # Gọi Scraper quét sâu các liên kết bên trong module
+            #         deep_data = extractor.update_module_details(project_folder, modul_name, target_url)
+            #     except Exception as e:
+            #         st.error(f"❌ Lỗi khi quét Playwright: {e}")
+            #         deep_data = None
+                
+            #     # 1. KIỂM TRA VÀ GIẢI MÃ COROUTINE (THÊM ĐOẠN NÀY)
+            #     if asyncio.iscoroutine(deep_data):
+            #         try:
+            #             # Kiểm tra xem có vòng lặp nào đang chạy không
+            #             loop = asyncio.get_event_loop()
+            #             if loop.is_running():
+            #                 # Nếu đang ở trong loop (như Streamlit), ta ép nó chạy đến khi xong
+            #                 nest_asyncio.apply() # Cần 'pip install nest_asyncio' nếu chưa có
+            #                 deep_data = loop.run_until_complete(deep_data)
+            #             else:
+            #                 deep_data = asyncio.run(deep_data)
+            #         except Exception as e:
+            #             # Cách dự phòng cuối cùng nếu các cách trên lỗi
+            #             st.warning(f"⚠️ Đang thử giải pháp dự phòng cho Async...")
+            #             # deep_data = asyncio.get_event_loop().run_until_complete(deep_data)
+            #             deep_data = asyncio.run(deep_data)
+
             if target_url:
                 extractor = GiaiphapvangScraper()
-                
                 try:
-                    # --- SỬA CHỖ NÀY: Gọi trực tiếp vì extractor giờ là Sync ---
-                    deep_data = extractor.update_module_details(project_folder, modul_name, target_url)
-                    # ----------------------------------------------------------
+                    # Gọi hàm - lúc này deep_data_result có thể là Coroutine
+                    deep_data_result = extractor.update_module_details(project_folder, modul_name, target_url)
                     
+                    # GIẢI MÃ COROUTINE
+                    if asyncio.iscoroutine(deep_data_result):
+                        try:
+                            loop = asyncio.get_event_loop()
+                            # Vì đã có nest_asyncio.apply() ở đầu file, dòng này sẽ chạy mượt
+                            deep_data = loop.run_until_complete(deep_data_result)
+                        except RuntimeError:
+                            # Nếu thread này chưa có loop nào, tạo mới
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                            deep_data = loop.run_until_complete(deep_data_result)
+                    else:
+                        deep_data = deep_data_result
+
                 except Exception as e:
                     st.error(f"❌ Lỗi khi quét Playwright: {e}")
                     deep_data = None
@@ -115,21 +159,21 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
                 if deep_data:
                     for form_name, f_info in deep_data.items():
                         full_title = f"{modul_name}|{form_name}"
-                        metadata_json = f_info.get('structure', {})
+                        metadata_json = f_info.get('structure', {}) # Đây là metadata 'vét cạn'
                         form_url = f_info.get('url', "")
                         
                         existing_form = next((s for s in db_subs if s['sub_title'] == full_title), None)
                         
                         if existing_form:
-                            # CẬP NHẬT
+                            # CẬP NHẬT (Sửa lại đúng tên tham số trong StudioController)
                             ctrl.update_sub_content(
                                 sub_id=existing_form['id'], 
-                                new_url=form_url,
-                                new_metadata=metadata_json,
-                                new_status="Chưa quay"
+                                url=form_url, 
+                                metadata=metadata_json, 
+                                status="Đã quét"
                             )
                         else:
-                            # THÊM MỚI
+                            # THÊM MỚI nếu chưa có trong DB
                             ctrl.add_sub_content(
                                 t_id=p['id'],
                                 sub_title=full_title,
@@ -150,7 +194,7 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
     
     display_data = []
     for sub in current_subs:
-        # Xử lý Metadata an toàn
+        # Giải mã Metadata an toàn
         meta = sub.get('metadata')
         if isinstance(meta, str) and meta.strip():
             try: meta = json.loads(meta)
@@ -158,37 +202,47 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
         elif not isinstance(meta, dict):
             meta = {}
 
-        # --- 1. GOM TOÀN BỘ FIELDS (Không giới hạn, chỉ giới hạn khi hiển thị) ---
-        fields = [f.get('label') for f in meta.get('form_fields', []) if f.get('label')]
-        sub['all_fields'] = fields # Lưu toàn bộ để AI dùng
+        # 1. TRUY XUẤT THEO CẤU TRÚC OMNI: layout -> main_content
+        layout = meta.get('layout', {})
+        main = layout.get('main_content', {})
+        active_form = layout.get('active_form', {}) # Ưu tiên nếu đã 'nội soi' form
+
+        # Gom Fields (Ưu tiên fields trong form nếu đang mở, nếu không lấy main)
+        target_inputs = active_form.get('inputs') if active_form else main.get('inputs', [])
+        fields = [f.get('label') or f.get('placeholder') or f.get('name') 
+                  for f in target_inputs if isinstance(f, dict)]
+        
+        sub['all_fields'] = fields 
         sub['preview_fields'] = "📝 " + ", ".join(fields[:5]) + ("..." if len(fields) > 5 else "") if fields else "🔍 Trống"
         
-        # --- 2. GOM TOÀN BỘ ACTIONS (Nút bấm) ---
-        # Lấy tất cả, không quan trọng từ khóa nào
+        # 2. GOM ACTIONS (Nút bấm chính + Nút trong dòng)
         all_btns = []
-        raw_btns = meta.get('actions', []) + meta.get('row_operations', []) # Gom cả nút chung và nút trong dòng
-        
+        raw_btns = main.get('actions', []) + main.get('row_operations', [])
+        if active_form:
+            raw_btns += active_form.get('actions', [])
+
         for item in raw_btns:
-            label = item.get('label', '') if isinstance(item, dict) else str(item)
-            if label and label not in all_btns: # Chống trùng
+            if isinstance(item, dict):
+                label = item.get('label', '')
+            else:
+                label = str(item)
+                
+            if label and label not in all_btns:
                 all_btns.append(label)
 
-        sub['all_actions'] = all_btns # Cất hết vào đây để sau này "diễn"
+        sub['all_actions'] = all_btns 
         
-        # Chỉ dùng từ khóa để "Sắp xếp ưu tiên" lên đầu khi hiển thị Preview thôi
-        priority_keywords = ["Lưu", "Thêm", "Tính", "In", "Duyệt"]
+        # Sắp xếp ưu tiên các nút quan trọng ngành vàng lên đầu Preview
+        priority_keywords = ["Lưu", "Thêm", "Tính", "In", "Duyệt", "Quét"]
         sorted_btns = sorted(all_btns, key=lambda x: any(kw in x for kw in priority_keywords), reverse=True)
 
-        # Hiển thị ra UI Streamlit (Vẫn lấy được đa dạng nút)
         sub['preview_actions'] = "⚡ " + ", ".join(sorted_btns[:6]) + ("..." if len(sorted_btns) > 6 else "") if sorted_btns else "🚫 Không nút"
         
-        # QUAN TRỌNG: Phải append nó vào danh sách hiển thị
         display_data.append(sub)
 
-    # GỌI COMPONENT HIỂN THỊ
+    # GỌI COMPONENT RENDER TỪNG DÒNG (Card UI)
     if display_data:
         gp_component = RenderForm() 
-        # Đảm bảo truyền đủ project_folder để AI/Hệ thống biết đường dẫn lưu file
         gp_component.render_item_rows(ctrl, p, display_data, ai_script, project_folder)
     else:
-        st.info("Module này chưa có Form. Vũ hãy nhấn 'CẬP NHẬT FORM (CẤP 2)' ở trên nhé!")
+        st.info("💡 Module này chưa có Form. Vũ hãy nhấn 'CẬP NHẬT FORM (CẤP 2)' ở trên để quét tri thức.")

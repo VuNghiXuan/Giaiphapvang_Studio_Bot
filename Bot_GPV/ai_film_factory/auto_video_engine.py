@@ -44,25 +44,31 @@ class AutoVideoEngine:
         missing = [k for k, v in checks.items() if not v]
         return len(missing) == 0, missing
 
+
     async def run_studio_bot(self, target_url, script_steps, project_name, form_name):
-        "1. Kiểm tra sẵn sàng & Tinh lọc kịch bản"
-        
+        """
+        QUY TRÌNH: Kiểm tra -> Đăng nhập -> Diễn xuất -> Chốt Video -> Hậu kỳ
+        """
+        # 1. Kiểm tra sẵn sàng & Tinh lọc kịch bản
         script_steps = self._refine_script(script_steps)
         ready, missing = self.check_ready_for_production(script_steps)
         if not ready:
             print(f"🚨 Engine chưa sẵn sàng. Thiếu: {missing}")
             return None
 
-        # 2. Khởi tạo đường dẫn
+        # 2. Khởi tạo đường dẫn lưu trữ
         video_dir = os.path.join(self.storage_path, project_name, "videos", form_name)
         os.makedirs(video_dir, exist_ok=True)
         
         audio_sync_data = []
         audio_paths = []
+        raw_video_path = None
 
         async with async_playwright() as p:
             # 3. Khởi tạo trình duyệt
             browser = await p.chromium.launch(headless=False, args=["--start-maximized"])
+            
+            # Record video cần context riêng để quản lý file
             context = await browser.new_context(
                 no_viewport=True, 
                 record_video_dir=video_dir, 
@@ -71,31 +77,53 @@ class AutoVideoEngine:
             page = await context.new_page()
 
             try:
-                # 4. Đăng nhập & Điều hướng
+                # 4. Đăng nhập & Điều hướng (Phải có await)
                 if not await self.auth_machine.login(page):
+                    print("❌ Đăng nhập thất bại, dừng diễn xuất.")
                     return None
                 
+                print(f"🚀 Di chuyển tới: {target_url}")
                 await page.goto(target_url or self.target_domain, wait_until="networkidle")
-                await asyncio.sleep(2)
+                await asyncio.sleep(2) # Chờ ổn định giao diện
                 
-                # 5. DIỄN XUẤT (Tách ra hàm riêng bên dưới)
+                # 5. DIỄN XUẤT (Hàm này phải là async def và gọi bằng await)
                 audio_sync_data, audio_paths = await self._perform_acting(
                     page, script_steps, video_dir
                 )
                 
-                # Lấy đường dẫn video thô sau khi đóng context
+                # CHỖ NÀY QUAN TRỌNG: Đợi 1 chút để frame cuối kịp ghi vào file
                 await asyncio.sleep(2)
+                
+                # Lấy path TRƯỚC khi đóng context (Playwright bản async yêu cầu await ở path())
+                # Lưu ý: Một số bản Playwright cũ dùng page.video.path() không cần await, 
+                # nhưng bản async chuẩn là CÓ await.
                 raw_video_path = await page.video.path()
+                
+                # Đóng context để Playwright "nhả" file video ra khỏi memory
+                await context.close()
                 
             except Exception as e:
                 print(f"❌ Lỗi trong lúc quay: {e}")
                 raw_video_path = None
             finally:
-                await context.close()
+                # Luôn đóng trình duyệt để sạch RAM
                 await browser.close()
 
-        # 6. HẬU KỲ
-        return self._run_post_production(raw_video_path, audio_sync_data, script_steps, video_dir, form_name, audio_paths)
+        # 6. HẬU KỲ (Chạy sau khi đã thoát khỏi 'async with' của Playwright)
+        if raw_video_path:
+            print(f"🎞️ Bắt đầu hậu kỳ video: {raw_video_path}")
+            return self._run_post_production(
+                raw_video_path, 
+                audio_sync_data, 
+                script_steps, 
+                video_dir, 
+                form_name, 
+                audio_paths,
+                logger="print"
+            )
+        
+        print("❌ Không có video thô, hủy bước hậu kỳ.")
+        return None
 
     def _refine_script(self, script_steps):
         """Gỡ bỏ các lớp bọc JSON dư thừa từ AI (Qwen, Llama, Gemini)"""
@@ -119,15 +147,17 @@ class AutoVideoEngine:
         video_start_time = time.time()
 
         for i, step in enumerate(script_steps):
-            'Hàm tương tác với UI và khớp Voice'
-
             current_offset = time.time() - video_start_time
             speech_text = step.get("speak") or step.get("text", "")
             
-            # Tạo âm thanh
+            # 1. Tạo âm thanh (Thêm try-except để nếu lỗi voice Bot vẫn diễn tiếp)
             a_path = os.path.join(video_dir, f"step_{i}.mp3")
-            duration = await self.audio_machine.generate(speech_text, a_path)
-            
+            try:
+                duration = await self.audio_machine.generate(speech_text, a_path)
+            except Exception as e:
+                print(f"⚠️ Lỗi Voice tại bước {i+1}: {e}")
+                duration = 2.0 # Default để Bot không bị đứng hình
+
             audio_paths.append(a_path)
             audio_sync_data.append({
                 "start_at": current_offset, 
@@ -137,19 +167,28 @@ class AutoVideoEngine:
 
             print(f"🎬 Diễn bước {i+1}/{len(script_steps)}: {speech_text[:50]}...")
             
-            # Xóa hiệu ứng cũ & Thực hiện bước diễn
+            # 2. Xóa hiệu ứng cũ & Thực hiện bước diễn
             if hasattr(self.effect_machine, 'clear_effects'):
                 await self.effect_machine.clear_effects(page)
             
+            # Đưa text vào Subtitle trên Browser để quay clip
+            if hasattr(self.effect_machine, 'show_subtitle'):
+                await self.effect_machine.show_subtitle(page, speech_text)
+
+            # 3. STUDIO THỰC THI (Click/Type/Hover)
             await self.studio_machine.execute_step(page, step, self.effect_machine)
 
-            # Kiểm tra lỗi UI (Bản Sync - Không await)
-            is_ok, errors = self.vision.check_health(page)
+            # 4. KIỂM TRA LỖI UI (Đã chuyển sang Async)
+            is_ok, errors = await self.vision.check_health(page)
             if not is_ok:
                 print(f"🚨 UI Error Step {i+1}: {errors}")
 
-            # Đợi Voice đọc xong mới qua bước sau
+            # 5. Đợi Voice đọc xong
             await asyncio.sleep(max(0.5, duration - 0.2))
+
+        # Cuối phim: Xóa sub
+        if hasattr(self.effect_machine, 'clear_effects'):
+            await self.effect_machine.clear_effects(page)
 
         return audio_sync_data, audio_paths
 
