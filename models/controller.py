@@ -49,18 +49,26 @@ class StudioController:
             return False
 
     # --- HELPERS ---
+    # def _get_default_metadata(self):
+    #     """Khung Metadata chuẩn OMNI 2026 - Đồng bộ tuyệt đối với VisionMachine"""
+    #     return {
+    #         "navigation": {"url": "", "hierarchy": [], "current_page": ""},
+    #         "state": {"has_overlay": False, "is_dialog_open": False, "errors": []},
+    #         "layout": {
+    #             "sidebar": {"items": [], "has_scroll": False},
+    #             "main_content": {
+    #                 "actions": [], "row_operations": [], "inputs": [], "tables": []
+    #             },
+    #             "active_form": None 
+    #         },
+    #         "scanned_at": ""
+    #     }
+
     def _get_default_metadata(self):
-        """Khung Metadata chuẩn OMNI 2026 - Đồng bộ tuyệt đối với VisionMachine"""
         return {
-            "navigation": {"url": "", "hierarchy": [], "current_page": ""},
-            "state": {"has_overlay": False, "is_dialog_open": False, "errors": []},
-            "layout": {
-                "sidebar": {"items": [], "has_scroll": False},
-                "main_content": {
-                    "actions": [], "row_operations": [], "inputs": [], "tables": []
-                },
-                "active_form": None 
-            },
+            "navigation": {"url": "", "breadcrumbs": [], "sidebar_items": []},
+            "state": {"is_dialog_open": False, "has_data": False},
+            "layout": {"actions": [], "inputs": [], "tables": []},
             "scanned_at": ""
         }
     
@@ -285,122 +293,206 @@ class StudioController:
     #         print(f"❌ Lỗi get_formatted_meta_for_ai: {e}")
     #         return None
 
-   
 
-   
+    # def get_formatted_meta_for_ai(self, sub_id):
+    #     """
+    #     [PHIÊN BẢN BIÊN KỊCH THÔNG MINH 2026 - CHỐNG ĐẠN 100%]
+    #     Hợp nhất Metadata, phân tích lộ trình Sidebar và ép AI đi theo 3 giai đoạn.
+    #     """
+    #     try:
+    #         # 1. Truy vấn dữ liệu từ Database
+    #         row = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
+            
+    #         if not row:
+    #             print(f"⚠️ Warning: sub_id {sub_id} không tồn tại trong DB.")
+    #             return None
+    #         sub = dict(row) 
+
+    #         raw_metadata_str = sub.get('metadata')
+    #         if not raw_metadata_str:
+    #             print(f"⚠️ Warning: sub_id {sub_id} rỗng metadata.")
+    #             return None
+            
+    #         # 2. Parse và Gọt sạch Metadata
+    #         try:
+    #             raw_meta = json.loads(raw_metadata_str)
+    #         except json.JSONDecodeError:
+    #             print(f"❌ Error: Metadata của {sub_id} không đúng định dạng JSON.")
+    #             return None
+
+    #         # Làm sạch dữ liệu thông qua hàm helper
+    #         clean_meta = self.clean_metadata_for_ai(raw_meta)
+    #         if not clean_meta:
+    #             print(f"❌ Error: clean_metadata_for_ai trả về None cho sub_id {sub_id}")
+    #             return None
+
+    #         # --- TRÍCH XUẤT THÔNG TIN ĐIỀU HƯỚNG (SIDEBAR & BREADCRUMBS) ---
+    #         p_info = clean_meta.get('page_info', {})
+    #         nav = p_info.get('navigation', {})
+    #         breadcrumbs = p_info.get('breadcrumbs', [])
+            
+    #         # Lấy danh sách menu sidebar từ metadata quét được
+    #         sidebar_items = clean_meta.get('sidebar_menu', [])
+    #         sidebar_desc = " > ".join(sidebar_items) if sidebar_items else "Trang chủ"
+            
+    #         # --- TRÍCH XUẤT THÔNG TIN UI ---
+    #         form_data = clean_meta.get('form_to_fill', [])
+    #         table = clean_meta.get('table_structure', {})
+    #         all_actions = clean_meta.get('available_actions', [])
+            
+    #         # Kiểm tra trạng thái
+    #         is_dialog = p_info.get('is_dialog_open', False)
+    #         is_empty_state = not table.get('has_data', False)
+    #         has_form = isinstance(form_data, list) and len(form_data) > 0
+            
+    #         # Tìm nút hành động chính (Ưu tiên nút Tạo mới/Thêm)
+    #         primary_btn = next((a for a in all_actions if any(x in a.get('label', '').lower() for x in ['tạo', 'thêm', 'mới'])), None)
+    #         if not primary_btn and all_actions:
+    #             primary_btn = all_actions[0] # Lấy nút đầu tiên nếu không thấy nút Tạo mới
+
+    #         # Công cụ đặc biệt (Excel, Ẩn hiện cột...)
+    #         special_actions = [a.get('label') for a in all_actions if 'export' in a.get('action', '') or 'view' in a.get('action', '')]
+            
+    #         # Bảng dữ liệu
+    #         table_desc = table.get('columns', [])
+            
+    #         # Trạng thái Form để AI hiểu
+    #         form_info = f"Form đang hiển thị với {len(form_data)} trường nhập liệu." if is_dialog or has_form else None
+
+    #         # --- 3. SOẠN THẢO PROMPT CHIẾN THUẬT (BIÊN KỊCH TOÀN CẢNH) ---
+    #         prompt = f"""
+    # ### 🎭 NHIỆM VỤ: BIÊN KỊCH PHIM HƯỚNG DẪN SỬ DỤNG HỆ THỐNG
+    # **Mục tiêu:** {sub.get('sub_title', 'Hướng dẫn chức năng')}
+    # **Trạng thái trang:** {"[DANH SÁCH TRỐNG - Hướng dẫn tạo mới]" if is_empty_state else "[CÓ DỮ LIỆU - Hướng dẫn quản lý]"}
+
+    # ---
+    # ### 📍 1. BỐI CẢNH & LỘ TRÌNH (CONTEXT & NAVIGATION)
+    # - **URL hiện tại:** {nav.get('url', 'N/A')}
+    # - **Lộ trình Menu (Breadcrumbs):** {" > ".join(breadcrumbs) if breadcrumbs else "N/A"}
+    # - **Sidebar (Menu trái):** {sidebar_desc}
+    # - **Trạng thái Form:** {form_info if form_info else "Form chưa mở - BẮT BUỘC phải nhấn nút khởi tạo trước."}
+
+    # ### 🔍 2. QUAN SÁT GIAO DIỆN THỰC TẾ (UI ANALYSIS)
+    # - **Nút hành động chính:** {primary_btn.get('label') if primary_btn else "Tạo mới"}
+    # - **Bảng dữ liệu:** {'; '.join(table_desc) if table_desc else "Không phát hiện bảng dữ liệu."}
+    # - **Công cụ bổ trợ:** {", ".join(special_actions) if special_actions else "Không có"}
+
+    # ### 📝 3. YÊU CẦU KỊCH BẢN CHI TIẾT (STORYLINE LOGIC)
+    # Hãy trả về một **JSON ARRAY phẳng** duy nhất. Tuyệt đối không bao bọc bởi key nào khác. 
+    # Định dạng mỗi object: {{"step": 1, "vo": "Lời thoại", "action": "type/click", "target_label": "Tên nút/ô", "value": "Dữ liệu mẫu"}}
+
+    # **QUY TẮC BIÊN KỊCH BẮT BUỘC (TUÂN THỦ THỨ TỰ 3 GIAI ĐOẠN):**
+
+    # #### GIAI ĐOẠN A: ĐIỀU HƯỚNG TRUYỀN THỐNG
+    # 1. **BẮT BUỘC:** Bước 1, 2, 3 phải là các thao tác click vào Menu Sidebar để dẫn người dùng đi từ Trang chủ vào đến trang mục tiêu.
+    # - Dựa vào lộ trình: {sidebar_desc}
+    # - VD: "Đầu tiên, tại menu bên trái, quý khách nhấn chọn mục {breadcrumbs[0] if len(breadcrumbs)>0 else ''}..."
+
+    # #### GIAI ĐOẠN B: MỞ FORM NHẬP LIỆU
+    # 2. Nếu trạng thái là Form chưa mở, bước tiếp theo BẮT BUỘC là click vào nút: `{primary_btn.get('label') if primary_btn else 'Tạo mới'}`.
+    # - VD: "Tiếp theo, quý khách nhấn nút {primary_btn.get('label') if primary_btn else 'Tạo mới'} để bắt đầu thêm dữ liệu."
+
+    # #### GIAI ĐOẠN C: CHI TIẾT NHẬP LIỆU
+    # 3. **Lời thoại (VO):** Thân thiện, dùng "Chúng ta...", "Quý khách...". 
+    # 4. **Hành động (Action):** - Với ô văn bản: dùng `type`, kèm `value` thực tế ngành vàng (VD: "Tiệm vàng Kim Long", "CH-Q1").
+    # - Với danh sách chọn: dùng `click`, dặn "chọn giá trị phù hợp".
+    # 5. **Kết thúc:** Luôn kết thúc bằng hành động `click` vào nút [Lưu] để hoàn tất.
+
+    # **⚠️ CẢNH BÁO:** `target_label` phải khớp 100% với tên nút/ô đã liệt kê ở Mục 2. Chỉ trả về JSON.
+    # """
+    #         return {
+    #             "prompt_letter": prompt,
+    #             "clean_metadata": clean_meta 
+    #         }
+
+    #     except Exception as e:
+    #         print(f"❌ Lỗi nghiêm trọng tại get_formatted_meta_for_ai: {e}")
+    #         traceback.print_exc() 
+    #         return None
 
 
+    # --- HÀM BIÊN KỊCH: TRÁI TIM CỦA HỆ THỐNG ---
     def get_formatted_meta_for_ai(self, sub_id):
         """
-        [PHIÊN BẢN BIÊN KỊCH THÔNG MINH 2026 - CHỐNG ĐẠN 100%]
-        Hợp nhất Metadata, phân tích trạng thái và ra lệnh kịch bản cho AI.
+        [PHIÊN BẢN STUDIO CHUYÊN NGHIỆP]
+        Hợp nhất: Metadata kỹ thuật + Workflow tùy chỉnh + Lưu ý từ Đạo diễn Vũ.
         """
         try:
-            # 1. Truy vấn dữ liệu từ Database
+            # 1. Lấy dữ liệu Content từ DB (Bao gồm title, workflow, notes...)
             row = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
-            
-            # FIX LỖI: sqlite3.Row không có .get(). Ép về dict để an toàn tuyệt đối.
-            if not row:
-                print(f"⚠️ Warning: sub_id {sub_id} không tồn tại trong DB.")
-                return None
-            sub = dict(row) 
+            if not row: return None
+            sub = dict(row)
 
-            # Kiểm tra trường metadata
-            raw_metadata_str = sub.get('metadata')
-            if not raw_metadata_str:
-                print(f"⚠️ Warning: sub_id {sub_id} rỗng metadata.")
-                return None
-            
-            # 2. Parse và Gọt sạch Metadata
-            try:
-                raw_meta = json.loads(raw_metadata_str)
-            except json.JSONDecodeError:
-                print(f"❌ Error: Metadata của {sub_id} không đúng định dạng JSON.")
-                return None
-
-            # Gọi hàm gọt metadata (Hàm này phải trả về dict, không được return None)
+            # 2. Parse và làm sạch Metadata từ VisionMachine
+            raw_meta = json.loads(sub.get('metadata', '{}'))
             clean_meta = self.clean_metadata_for_ai(raw_meta)
             
-            # --- CHỐT CHẶN NONETYPE ---
-            if not clean_meta:
-                print(f"❌ Error: clean_metadata_for_ai trả về None cho sub_id {sub_id}")
-                return None
-
-            # Dùng .get() với giá trị mặc định cho tất cả để an toàn tuyệt đối
-            p_info = clean_meta.get('page_info', {})
-            form_data = clean_meta.get('form_to_fill', [])
-            table = clean_meta.get('table_structure', {})
-            all_actions = clean_meta.get('available_actions', [])
+            # 3. Chuẩn bị các biến định danh kỹ thuật (Chống lỗi target_label)
+            p_info = clean_meta['page_info']
+            sidebar_path = p_info.get('sidebar_path', [])
+            sidebar_desc = " > ".join(sidebar_path) if sidebar_path else "Trang chủ"
             
-            # Trích xuất thông tin trạng thái
+            input_labels = [i['label'] for i in clean_meta['form_to_fill']]
+            all_actions = clean_meta['available_actions']
+            action_labels = [a['label'] for a in all_actions]
+            if 'Lưu' not in action_labels: action_labels.append('Lưu')
+
+            # Nút mở form
+            primary_btn = next((a for a in all_actions if any(kw in a['label'].lower() for kw in ['tạo', 'thêm', 'mới'])), None)
+            p_btn_label = primary_btn['label'] if primary_btn else "Tạo mới"
+
+            # Trạng thái UI
+            is_empty = not clean_meta['table_structure']['has_data']
             is_dialog = p_info.get('is_dialog_open', False)
-            has_data = table.get('has_data', False)
-            
-            # --- GOM TẤT CẢ NÚT BẤM (TOOLBAR + FORM) ---
-            btn_labels = []
-            if isinstance(all_actions, list):
-                # Chỉ lấy label, bỏ trùng, bọc trong ngoặc vuông để AI dễ nhận diện
-                btn_labels = sorted(list(set(
-                    [f"[{a['label']}]" for a in all_actions if isinstance(a, dict) and a.get('label')]
-                )))
-            
-            # --- LOGIC PHÂN TÍCH NGỮ CẢNH (TRÁNH AI BỊA ĐẶT) ---
-            has_form = isinstance(form_data, list) and len(form_data) > 0
-            
-            if is_dialog or has_form:
-                status_context = "[ĐANG TRONG FORM] -> Tập trung hướng dẫn điền thông tin chi tiết vào các ô nhập liệu."
-                primary_flow = "Điền thông tin và kết thúc bằng nút Lưu."
-            elif not has_data:
-                status_context = "[TRANG TRỐNG] -> Dữ liệu chưa có. Phải hướng dẫn nhấn nút 'Tạo mới' hoặc 'Thêm' để bắt đầu."
-                primary_flow = "Nhấn nút khởi tạo để mở Form nhập liệu."
-            else:
-                status_context = "[DANH SÁCH CÓ DỮ LIỆU] -> Trang đã có dữ liệu. Hướng dẫn cách xem, lọc hoặc quản lý."
-                primary_flow = "Quan sát bảng dữ liệu và thực hiện các thao tác quản lý."
 
-            
-            # --- 3. SOẠN THẢO PROMPT CHIẾN THUẬT (BẢN CHUẨN HÓA ACTION) ---
+            # --- 4. SOẠN THẢO PROMPT "ĐẠO DIỄN VŨ" ---
             prompt = f"""
-### 🎭 NHIỆM VỤ: BIÊN KỊCH CHO HỆ THỐNG "{sub.get('sub_title', 'Phần mềm quản lý')}"
+### 🎬 STUDIO PRODUCTION: {sub.get('sub_title')}
+**Slogan thương hiệu:** {sub.get('slogan', 'Giải Pháp Vàng - Quản lý thông minh')}
+**Mục tiêu Workflow:** {sub.get('workflow_custom', 'Hướng dẫn người dùng thao tác cơ bản')}
 
 ---
-### 📍 1. BỐI CẢNH (SYSTEM CONTEXT)
-- **Vị trí hiện tại:** {" > ".join(p_info.get('breadcrumbs', []))}
-- **Trạng thái:** {status_context}
-- **NHIỆM VỤ:** Chỉ lập kịch bản cho các thành phần xuất hiện trong mục 2. TUYỆT ĐỐI không hướng dẫn các bước điều hướng bên ngoài (như click Menu, click trang chủ).
+### 📍 1. BỐI CẢNH & LỘ TRÌNH KỸ THUẬT
+- **Menu Sidebar:** {sidebar_desc}
+- **Đường dẫn:** {" > ".join(p_info['breadcrumbs'])}
+- **Trạng thái Form:** {"ĐÃ MỞ - Điền thông tin ngay" if is_dialog else f"CHƯA MỞ - Phải nhấn '{p_btn_label}'"}
 
-### 🔍 2. QUAN SÁT THỊ GIÁC (UI ANALYSIS)
-- **Các nút:** {', '.join(btn_labels) if btn_labels else "Không có"}
-- **Ô nhập liệu (Form):**
-{self._format_form_for_ai(form_data)}
+### ✍️ 2. GHI CHÚ TỪ ĐẠO DIỄN VŨ (BẮT BUỘC TUÂN THỦ)
+> {sub.get('director_notes', 'Diễn đạt tự nhiên, tập trung vào sự tiện lợi của phần mềm.')}
 
-### 📝 3. YÊU CẦU ĐẦU RA (JSON ONLY)
-Trả về 1 JSON ARRAY phẳng. 
+---
+### 🔍 3. DANH SÁCH NHÃN (KHỚP 100% ĐỂ BOT KHÔNG SKIP)
+- **Menu:** {", ".join([f"'{l}'" for l in sidebar_path])}
+- **Input:** {", ".join([f"'{l}'" for l in input_labels])}
+- **Button:** {", ".join([f"'{l}'" for l in action_labels])}
 
-**Cấu trúc 1 object mẫu (BẮT BUỘC ĐÚNG TÊN KEY):**
-{{
-    "step": 1, 
-    "vo": "Lời thoại...", 
-    "action": "type hoặc click", 
-    "target_label": "Khớp 100% mục 2",
-    "value": "Dữ liệu mẫu"
-}}
+---
+### 📝 4. YÊU CẦU KỊCH BẢN (JSON ONLY)
+Trả về 1 JSON Array phẳng. KHÔNG GIẢI THÍCH.
+Mỗi bước: {{"step": int, "vo": "Lời thoại", "action": "click/type", "target_label": "Nhãn khớp mục 3", "value": "Dữ liệu"}}
 
-**ĐIỀU KHOẢN NGHIÊM NGẶT:**
-1. **Key "value":** Tuyệt đối không được viết thành "input_value" hay "data". Phải là "value".
-2. **Ngữ cảnh:** Vì đang trong Form, bước 1 phải là ô nhập liệu đầu tiên (Mã chi nhánh). Không chào hỏi rườm rà.
-3. **Dữ liệu mẫu:** Sử dụng dữ liệu thực tế ngành vàng bạc (VD: Mã: CH-01, Tên: Tiệm Vàng Kim Long, Địa chỉ: 123 Chợ Thiếc...).
-4. **Action:** Chỉ dùng `type` cho ô nhập, `click` cho nút bấm.
+**QUY TẮC SỐNG CÒN:**
+1. **Giai đoạn A (Dẫn nhập):** Phải click qua: {sidebar_desc}. Lời thoại (VO) phải lồng ghép slogan: "{sub.get('slogan')}".
+2. **Giai đoạn B (Mở form):** Nếu chưa mở, click '{p_btn_label}'.
+3. **Giai đoạn C (Nhập liệu):** Nhập các trường: {", ".join(input_labels)}. Dùng dữ liệu mẫu ngành vàng.
+4. **Action:** Chỉ dùng "click" hoặc "type". KHÔNG dùng "Nhập", "Click".
+5. **Target_label:** Copy y hệt từ mục 3. Sai 1 dấu cách là Bot sẽ chết.
 
-**Chỉ trả về JSON. Không giải thích.**
+**Ví dụ:**
+[
+  {{"step": 1, "vo": "Chào mừng quý khách đến với Giải Pháp Vàng, hãy chọn {sidebar_path[0] if sidebar_path else 'Menu'}", "action": "click", "target_label": "{sidebar_path[0] if sidebar_path else 'Menu'}", "value": ""}}
+]
 """
             return {
-                "prompt_letter": prompt,
-                "clean_metadata": clean_meta 
+                "prompt_letter": prompt, 
+                "clean_metadata": clean_meta,
+                "sub_data": sub # Trả về thêm để dùng ngoài StudioController nếu cần
             }
 
         except Exception as e:
-            print(f"❌ Lỗi nghiêm trọng tại get_formatted_meta_for_ai: {e}")
-            traceback.print_exc() 
+            print(f"❌ Lỗi get_formatted_meta_for_ai: {e}")
+            import traceback
+            traceback.print_exc()
             return None
 
     def _format_form_for_ai(self, form_data):
@@ -414,68 +506,121 @@ Trả về 1 JSON ARRAY phẳng.
             lines.append(f"  - {f['label']} (Loại: {f['type']}) {req}")
         return "\n".join(lines) if lines else "  - Không có form đang mở."
 
+    # def clean_metadata_for_ai(self, raw_data):
+    #     """
+    #     Gọt sạch tọa độ rác, lọc nút bấm ẩn, chỉ để lại dữ liệu nghiệp vụ.
+    #     PHẢI CHẶN LỖI NONETYPE TẠI ĐÂY.
+    #     """
+    #     if not raw_data:
+    #         return None
+
+    #     # 1. Gom nút từ Layout (Toolbar)
+    #     # Sử dụng .get() kèm default là {} để không bao giờ bị None
+    #     layout_data = raw_data.get("layout", {})
+    #     layout_actions = [
+    #         {"label": a.get("label"), "type": "button"} 
+    #         for a in layout_data.get("actions", [])
+    #         if float(a.get("opacity", 1)) > 0 and a.get("is_visible") and a.get("label")
+    #     ]
+
+    #     # 2. Lọc Active Form - CHỖ GÂY LỖI ĐÃ ĐƯỢC FIX TẠI ĐÂY
+    #     # Đảm bảo active_form luôn là một dict, kể cả khi raw_data không có key đó
+    #     active_form = raw_data.get("active_form") or {} 
+        
+    #     # Bây giờ gọi .get() thoải mái vì active_form ít nhất là {}
+    #     form_actions = [
+    #         {"label": a.get("label"), "type": "button"}
+    #         for a in active_form.get("actions", [])
+    #         if a.get("label")
+    #     ]
+
+    #     # 3. Lọc Input Form
+    #     form_inputs = [
+    #         {
+    #             "label": i.get("label"),
+    #             "type": i.get("type"),
+    #             "required": i.get("required", False)
+    #         }
+    #         for i in active_form.get("inputs", [])
+    #         if i.get("label")
+    #     ]
+        
+    #     # 4. Lọc Cấu trúc bảng
+    #     tables = layout_data.get("tables", [])
+    #     table_cols = tables[0].get("columns", []) if tables else []
+    #     has_data = False
+    #     if tables:
+    #         has_data = tables[0].get("count", 0) > 0
+
+    #     # 5. Hợp nhất Action
+    #     all_available_actions = layout_actions + form_actions
+
+    #     return {
+    #         "page_info": {
+    #             "url": raw_data.get("url"),
+    #             "is_dialog_open": raw_data.get("state", {}).get("is_dialog_open", False),
+    #             "breadcrumbs": raw_data.get("navigation", {}).get("breadcrumbs", [])
+    #         },
+    #         "available_actions": all_available_actions,
+    #         "form_to_fill": form_inputs,
+    #         "table_structure": {
+    #             "columns": table_cols,
+    #             "has_data": has_data
+    #         }
+    #     }
+
+
+    # --- HÀM QUAN TRỌNG: LÀM SẠCH DỮ LIỆU ĐỂ "MỚM" CHO AI ---
     def clean_metadata_for_ai(self, raw_data):
         """
-        Gọt sạch tọa độ rác, lọc nút bấm ẩn, chỉ để lại dữ liệu nghiệp vụ.
-        PHẢI CHẶN LỖI NONETYPE TẠI ĐÂY.
+        Gọt sạch tọa độ, chỉ để lại nhãn (labels) để AI không bị loạn.
         """
-        if not raw_data:
-            return None
+        if not raw_data: return self._get_default_metadata()
 
-        # 1. Gom nút từ Layout (Toolbar)
-        # Sử dụng .get() kèm default là {} để không bao giờ bị None
-        layout_data = raw_data.get("layout", {})
-        layout_actions = [
-            {"label": a.get("label"), "type": "button"} 
-            for a in layout_data.get("actions", [])
-            if float(a.get("opacity", 1)) > 0 and a.get("is_visible") and a.get("label")
-        ]
+        # 1. Bóc tách lộ trình (Cực kỳ quan trọng để AI không nhảy cóc)
+        nav = raw_data.get("navigation", {})
+        # Lấy danh sách menu sidebar đã quét được (ví dụ: ["Hệ thống", "Thông tin công ty", "Chi nhánh"])
+        sidebar_items = nav.get("sidebar_items", []) or nav.get("hierarchy", [])
+        breadcrumbs = nav.get("breadcrumbs", [])
 
-        # 2. Lọc Active Form - CHỖ GÂY LỖI ĐÃ ĐƯỢC FIX TẠI ĐÂY
-        # Đảm bảo active_form luôn là một dict, kể cả khi raw_data không có key đó
-        active_form = raw_data.get("active_form") or {} 
+        # 2. Bóc tách các nút bấm (Actions)
+        layout = raw_data.get("layout", {})
+        all_btns = layout.get("actions", [])
         
-        # Bây giờ gọi .get() thoải mái vì active_form ít nhất là {}
-        form_actions = [
-            {"label": a.get("label"), "type": "button"}
-            for a in active_form.get("actions", [])
-            if a.get("label")
+        # Nếu có form đang mở (Dialog), ưu tiên lấy nút trong Form
+        active_form = raw_data.get("active_form") or {}
+        if active_form:
+            all_btns += active_form.get("actions", [])
+
+        clean_actions = [
+            {"label": a.get("label"), "is_primary": a.get("is_primary", False)} 
+            for a in all_btns if a.get("label")
         ]
 
-        # 3. Lọc Input Form
-        form_inputs = [
-            {
-                "label": i.get("label"),
-                "type": i.get("type"),
-                "required": i.get("required", False)
-            }
-            for i in active_form.get("inputs", [])
-            if i.get("label")
+        # 3. Bóc tách ô nhập liệu (Inputs)
+        inputs = active_form.get("inputs", []) if active_form else layout.get("inputs", [])
+        clean_inputs = [
+            {"label": i.get("label"), "type": i.get("type", "text"), "required": i.get("required", False)}
+            for i in inputs if i.get("label")
         ]
-        
-        # 4. Lọc Cấu trúc bảng
-        tables = layout_data.get("tables", [])
+
+        # 4. Kiểm tra dữ liệu bảng
+        tables = layout.get("tables", [])
         table_cols = tables[0].get("columns", []) if tables else []
-        has_data = False
-        if tables:
-            has_data = tables[0].get("count", 0) > 0
-
-        # 5. Hợp nhất Action
-        all_available_actions = layout_actions + form_actions
+        has_data = tables[0].get("count", 0) > 0 if tables else False
 
         return {
             "page_info": {
                 "url": raw_data.get("url"),
-                "is_dialog_open": raw_data.get("state", {}).get("is_dialog_open", False),
-                "breadcrumbs": raw_data.get("navigation", {}).get("breadcrumbs", [])
+                "is_dialog_open": raw_data.get("state", {}).get("is_dialog_open", False) or bool(active_form),
+                "breadcrumbs": breadcrumbs,
+                "sidebar_path": sidebar_items
             },
-            "available_actions": all_available_actions,
-            "form_to_fill": form_inputs,
-            "table_structure": {
-                "columns": table_cols,
-                "has_data": has_data
-            }
+            "available_actions": clean_actions,
+            "form_to_fill": clean_inputs,
+            "table_structure": {"columns": table_cols, "has_data": has_data}
         }
+    
     
     def delete_sub_content(self, sub_id, folder_name, sub_folder):
         try:
