@@ -4,6 +4,7 @@ import re
 import json
 import time
 from datetime import datetime
+import asyncio
 
 # 2. Thư viện bên thứ ba (Third-party)
 from playwright.async_api import async_playwright
@@ -114,50 +115,6 @@ class GiaiphapvangScraper:
             print(f"❌ Đăng nhập thất bại: {e}")
             return False
         
-
-    # async def get_home_modules(self):
-    #     """CẤP ĐỘ 1: Vét sạch Module lớn từ trang chủ"""
-        
-    #     modules = []
-    #     # 1. PHẢI CÓ 'async' trước 'with'
-    #     async with async_playwright() as p:
-    #         # 2. PHẢI CÓ 'await' trước các lệnh khởi tạo
-    #         browser = await p.chromium.launch(headless=False)
-    #         page = await browser.new_page()
-            
-    #         # Lưu ý: Nếu hàm login của Vũ chưa có async/await thì nên sửa luôn cho đồng bộ
-    #         if self.login(page): 
-    #             print("🔍 [🕵️ Bot Tiền Trạm] tìm kiếm danh sách nghiệp vụ...")
-    #             try:
-    #                 # 3. PHẢI CÓ 'await'
-    #                 await page.wait_for_selector(".MuiGrid-item", timeout=10000)
-    #             except: pass
-
-    #             # 4. PHẢI CÓ 'await'
-    #             raw_links = await page.evaluate(f'''() => {{
-    #                 const links = Array.from(document.querySelectorAll('a'));
-    #                 return links
-    #                     .map(a => ({{ 
-    #                         text: a.innerText.trim().split('\\n')[0], 
-    #                         href: a.href 
-    #                     }}))
-    #                     .filter(m => m.text.length > 2 && m.href.includes('{Config.TARGET_DOMAIN}'));
-    #             }}''')
-                
-    #             # Loại bỏ rác (Phần này xử lý logic Python thuần nên không cần await)
-    #             exclude_keywords = ["Đăng xuất", "Profile", "Thông báo", "Cài đặt", "Setting"]
-    #             unique_modules = {}
-    #             for m in raw_links:
-    #                 if not any(k.lower() in m['text'].lower() for k in exclude_keywords):
-    #                     unique_modules[m['href']] = m
-                
-    #             modules = list(unique_modules.values())
-    #             print(f" [🕵️ Bot Tiền Trạm] Đã tìm thấy {len(modules)} Modules nghiệp vụ ")
-            
-    #         # 5. Đóng browser cũng cần await
-    #         await browser.close()
-            
-    #     return modules
 
     async def get_home_modules(self):
         """CẤP ĐỘ 1: Vét sạch Module lớn từ trang chủ (Tiền trạm)"""
@@ -368,27 +325,37 @@ class GiaiphapvangScraper:
         except:
             return "unknown_form"
 
-    # def _extract_page_structure(self, page):
+   
+    
+    # async def _extract_page_structure(self, page):       
+        
     #     """
-    #     Sử dụng VisionMachine để quét UI theo chuẩn OMNI METADATA 2026
+    #     SỬA LỖI TIMEOUT: Nâng cấp cơ chế đợi UI ổn định cho trang nặng.
     #     """
     #     print(f" 👁️ VisionMachine đang nội soi: {page.url}")
         
     #     try:
-    #         # 1. Đợi UI ổn định (Material UI/MUI)
-    #         page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, .MuiTable-root", timeout=5000)
-            
-    #         # 2. Gọi VisionMachine thực thi Script "Vét cạn"
-    #         # Lưu ý: Hàm này phải trả về đúng cấu trúc JSON mà mình đã thiết kế
-    #         metadata = self.vision.scan_page(page) 
+    #         # 1. ĐỢI UI (Nhớ thêm await vào các hàm của page nếu con Trinh Sát đang dùng Async)
+    #         try:
+    #             await page.wait_for_load_state("networkidle", timeout=20000)
+    #             await page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, .MuiTable-root, button", timeout=15000)
+    #         except Exception:
+    #             print(f" ⚠️ Cảnh báo: UI chưa hoàn toàn ổn định nhưng vẫn tiến hành nội soi...")
+
+    #         # 2. GỌI VISION MACHINE (Đã có await - Chuẩn!)
+    #         metadata = await self.vision.scout_report(page)
 
     #         if metadata:
     #             # 3. Hợp nhất thêm các thông tin định danh
+    #             # Đảm bảo dùng .get() để không bị Crash nếu metadata rỗng
     #             metadata['form_id'] = self._infer_form_id(page)
     #             metadata['scanned_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-    #             # Gia cố các key quan trọng để AI không bị lỗi khi đọc
-    #             if 'layout' not in metadata: metadata['layout'] = {}
+    #             # Gia cố các key quan trọng
+    #             if 'layout' not in metadata: 
+    #                 # Nếu JS trả về main_content thay vì layout, ta gộp nó lại
+    #                 metadata['layout'] = metadata.get('main_content', {})
+                
     #             if 'navigation' not in metadata: 
     #                 metadata['navigation'] = {"url": page.url, "current_page": page.title()}
                 
@@ -398,109 +365,50 @@ class GiaiphapvangScraper:
     #         print(f" ❌ Lỗi nội soi tại {page.url}: {e}")
             
     #     return {"error": "Scan failed", "layout": {"main_content": {"actions": [], "inputs": []}}}
-    
+
     async def _extract_page_structure(self, page):       
-        
         """
-        SỬA LỖI TIMEOUT: Nâng cấp cơ chế đợi UI ổn định cho trang nặng.
+        Nâng cấp cơ chế đợi UI ổn định cho trang nặng.
         """
         print(f" 👁️ VisionMachine đang nội soi: {page.url}")
         
         try:
-            # 1. ĐỢI UI (Nhớ thêm await vào các hàm của page nếu con Trinh Sát đang dùng Async)
+            # 1. Đợi UI xuất hiện (Dùng những selector đặc trưng của hệ thống Vàng)
             try:
-                await page.wait_for_load_state("networkidle", timeout=20000)
-                await page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, .MuiTable-root, button", timeout=15000)
+                # Đợi mạng rảnh và các thành phần chính của MUI/Grid xuất hiện
+                await page.wait_for_load_state("networkidle", timeout=15000)
+                await page.wait_for_selector(".MuiDataGrid-root, .MuiInputBase-input, button", timeout=10000)
             except Exception:
-                print(f" ⚠️ Cảnh báo: UI chưa hoàn toàn ổn định nhưng vẫn tiến hành nội soi...")
+                print(f" ⚠️ UI chưa hoàn toàn ổn định nhưng vẫn tiến hành nội soi...")
 
-            # 2. GỌI VISION MACHINE (Đã có await - Chuẩn!)
-            metadata = await self.vision.scan_page(page, is_async=True)
+            # 2. GỌI VISION MACHINE (Sửa lỗi truyền tham số thừa)
+            metadata = await self.vision.scout_report(page)
 
             if metadata:
                 # 3. Hợp nhất thêm các thông tin định danh
-                # Đảm bảo dùng .get() để không bị Crash nếu metadata rỗng
                 metadata['form_id'] = self._infer_form_id(page)
-                metadata['scanned_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 
-                # Gia cố các key quan trọng
-                if 'layout' not in metadata: 
-                    # Nếu JS trả về main_content thay vì layout, ta gộp nó lại
-                    metadata['layout'] = metadata.get('main_content', {})
-                
-                if 'navigation' not in metadata: 
-                    metadata['navigation'] = {"url": page.url, "current_page": page.title()}
+                # Đảm bảo layout luôn tồn tại để tránh lỗi Database sau này
+                if not metadata.get('layout'):
+                    metadata['layout'] = metadata.get('active_form') or {}
                 
                 return metadata
         
         except Exception as e:
             print(f" ❌ Lỗi nội soi tại {page.url}: {e}")
             
-        return {"error": "Scan failed", "layout": {"main_content": {"actions": [], "inputs": []}}}
-    
-    # def sync_deep_scan(self, ctrl, project_id, project_folder, module_name, module_url):
-    #     """Đào sâu và đồng bộ tri thức vào Database"""
-    #     print(f"🚀 [DEEP SCAN] Đang mổ xẻ và nạp DB Module: {module_name}")
-        
-    #     # 1. Chạy quy trình quét (Playwright sẽ click Thêm/Sửa để lấy metadata ẩn)
-    #     deep_data = self.update_module_details(project_folder, module_name, module_url)
-        
-    #     if not deep_data: 
-    #         print(f"⚠️ Module {module_name} không có dữ liệu hoặc lỗi.")
-    #         return False
-
-    #     success_count = 0
-    #     for form_name, f_data in deep_data.items():
-    #         # Tên định danh duy nhất trong DB: "Kế toán|Danh mục khách hàng"
-    #         full_title = f"{module_name}|{form_name}"
-            
-    #         # Lấy metadata "vét cạn" (structure) đã được gom ở bước update_module_details
-    #         metadata_obj = f_data.get('structure', {})
-    #         form_url = f_data.get('url') or module_url
-
-    #         # Logic phòng thủ: Không lưu nếu metadata quá rỗng (tránh đè dữ liệu tốt bằng dữ liệu lỗi)
-    #         if not metadata_obj.get('layout', {}).get('main_content', {}).get('actions'):
-    #             if not metadata_obj.get('layout', {}).get('main_content', {}).get('inputs'):
-    #                 print(f" ⚠️ Bỏ qua {full_title}: Metadata rỗng.")
-    #                 continue
-
-    #         try:
-    #             # Tìm xem sub_content này đã có trong DB chưa
-    #             existing_subs = ctrl.get_sub_contents(project_id)
-    #             existing_item = next((s for s in existing_subs if s['sub_title'] == full_title), None)
-
-    #             if existing_item:
-    #                 # UPDATE: Cập nhật metadata mới nhất vào DB
-    #                 res = ctrl.update_sub_content(
-    #                     sub_id=existing_item['id'], 
-    #                     new_url=form_url, 
-    #                     new_metadata=metadata_obj, # Đây là nơi lưu Object JSON cực lớn
-    #                     new_status="scanned"
-    #                 )
-    #             else:
-    #                 # INSERT: Thêm mới hoàn toàn
-    #                 res = ctrl.add_sub_content(
-    #                     t_id=project_id,
-    #                     sub_title=full_title,
-    #                     parent_folder=project_folder,
-    #                     url=form_url,
-    #                     metadata=metadata_obj
-    #                 )
-                
-    #             if res: success_count += 1
-                    
-    #         except Exception as e:
-    #             print(f" ❌ Lỗi DB tại {full_title}: {e}")
-                
-    #     print(f"📊 Xong! Đã nạp {success_count} 'túi tri thức' vào Database.")
-    #     return True
-
+        # Trả về cấu trúc rỗng chuẩn để không gây lỗi cho các hàm xử lý sau
+        return {
+            "error": "Scan failed", 
+            "layout": {"actions": [], "inputs": [], "tables": []},
+            "navigation": {"url": page.url}
+        }
 
     async def sync_deep_scan(self, ctrl, project_id, project_folder, module_name, module_url):
         """Đào sâu và đồng bộ tri thức vào Database"""
-        print(f"🚀 [DEEP SCAN] Đang mổ xẻ và nạp DB Module: {module_name}")
+        print(f"🚀 [DEEP SCAN] Đang mổ xẻ Module: {module_name}")
         
-        # 1. PHẢI CÓ await để đợi Playwright quét xong
+        # Chạy mổ xẻ từng link con trong module
         deep_data = await self.update_module_details(project_folder, module_name, module_url)
         
         if not deep_data: 
@@ -510,18 +418,22 @@ class GiaiphapvangScraper:
         success_count = 0
         for form_name, f_data in deep_data.items():
             full_title = f"{module_name}|{form_name}"
+            # Lấy metadata trực tiếp từ structure
             metadata_obj = f_data.get('structure', {})
             form_url = f_data.get('url') or module_url
 
-            # Logic phòng thủ giữ nguyên
-            if not metadata_obj.get('layout', {}).get('main_content', {}).get('actions'):
-                if not metadata_obj.get('layout', {}).get('main_content', {}).get('inputs'):
-                    print(f" ⚠️ Bỏ qua {full_title}: Metadata rỗng.")
-                    continue
+            # Kiểm tra xem có 'hàng' để lưu không (tránh lưu rác)
+            layout = metadata_obj.get('layout', {})
+            has_actions = len(layout.get('actions', [])) > 0
+            has_inputs = len(layout.get('inputs', [])) > 0 or len(metadata_obj.get('active_form', {}).get('inputs', [])) > 0
+
+            if not (has_actions or has_inputs):
+                print(f" ⚠️ Bỏ qua {full_title}: Không tìm thấy tương tác UI.")
+                continue
 
             try:
-                # 2. Lưu ý: Nếu các hàm trong 'ctrl' (Database) cũng là async, ông phải thêm await vào trước chúng.
-                # Nếu 'ctrl' là thư viện sync (như pymysql, sqlite3 thông thường) thì giữ nguyên như dưới:
+                # Nếu ctrl là thư viện SQL sync (sqlite3, mysql-connector) thì giữ nguyên
+                # Nếu dùng Database Async thì nhớ thêm 'await' ở đây
                 existing_subs = ctrl.get_sub_contents(project_id)
                 existing_item = next((s for s in existing_subs if s['sub_title'] == full_title), None)
 
@@ -546,5 +458,59 @@ class GiaiphapvangScraper:
             except Exception as e:
                 print(f" ❌ Lỗi DB tại {full_title}: {e}")
                 
-        print(f"📊 Xong! Đã nạp {success_count} 'túi tri thức' vào Database.")
+        print(f"📊 Hoàn tất! Đã nạp {success_count} túi tri thức nghiệp vụ.")
         return True
+    
+    
+    # async def sync_deep_scan(self, ctrl, project_id, project_folder, module_name, module_url):
+    #     """Đào sâu và đồng bộ tri thức vào Database"""
+    #     print(f"🚀 [DEEP SCAN] Đang mổ xẻ và nạp DB Module: {module_name}")
+        
+    #     # 1. PHẢI CÓ await để đợi Playwright quét xong
+    #     deep_data = await self.update_module_details(project_folder, module_name, module_url)
+        
+    #     if not deep_data: 
+    #         print(f"⚠️ Module {module_name} không có dữ liệu hoặc lỗi.")
+    #         return False
+
+    #     success_count = 0
+    #     for form_name, f_data in deep_data.items():
+    #         full_title = f"{module_name}|{form_name}"
+    #         metadata_obj = f_data.get('structure', {})
+    #         form_url = f_data.get('url') or module_url
+
+    #         # Logic phòng thủ giữ nguyên
+    #         if not metadata_obj.get('layout', {}).get('main_content', {}).get('actions'):
+    #             if not metadata_obj.get('layout', {}).get('main_content', {}).get('inputs'):
+    #                 print(f" ⚠️ Bỏ qua {full_title}: Metadata rỗng.")
+    #                 continue
+
+    #         try:
+    #             # 2. Lưu ý: Nếu các hàm trong 'ctrl' (Database) cũng là async, ông phải thêm await vào trước chúng.
+    #             # Nếu 'ctrl' là thư viện sync (như pymysql, sqlite3 thông thường) thì giữ nguyên như dưới:
+    #             existing_subs = ctrl.get_sub_contents(project_id)
+    #             existing_item = next((s for s in existing_subs if s['sub_title'] == full_title), None)
+
+    #             if existing_item:
+    #                 res = ctrl.update_sub_content(
+    #                     sub_id=existing_item['id'], 
+    #                     new_url=form_url, 
+    #                     new_metadata=metadata_obj, 
+    #                     new_status="scanned"
+    #                 )
+    #             else:
+    #                 res = ctrl.add_sub_content(
+    #                     t_id=project_id,
+    #                     sub_title=full_title,
+    #                     parent_folder=project_folder,
+    #                     url=form_url,
+    #                     metadata=metadata_obj
+    #                 )
+                
+    #             if res: success_count += 1
+                    
+    #         except Exception as e:
+    #             print(f" ❌ Lỗi DB tại {full_title}: {e}")
+                
+    #     print(f"📊 Xong! Đã nạp {success_count} 'túi tri thức' vào Database.")
+    #     return True

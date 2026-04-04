@@ -192,7 +192,7 @@ class AutoVideoEngine:
 
         return audio_sync_data, audio_paths
 
-    def _run_post_production(self, raw_path, sync_data, steps, video_dir, form_name, audio_files):
+    def _run_post_production(self, raw_path, sync_data, steps, video_dir, form_name, audio_files, **kwargs):
         'Hậu kỳ: Xử lý FFmpeg/MoviePy và dọn dẹp file rác.'
 
         if not raw_path or not os.path.exists(raw_path):

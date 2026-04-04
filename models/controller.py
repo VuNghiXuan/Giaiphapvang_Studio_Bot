@@ -4,6 +4,7 @@ from datetime import datetime
 import json
 from config import Config
 from .db_engine import DBEngine
+import traceback
 
 class StudioController:
     def __init__(self):
@@ -204,7 +205,7 @@ class StudioController:
 
     # def get_formatted_meta_for_ai(self, sub_id):
     #     """
-    #     BỨC THƯ CHI TIẾT GỬI AI - Chuyển đổi Metadata UI thành kịch bản sản xuất video tự động.
+    #     BỨC THƯ CHI TIẾT GỬI AI v2.0 - Biến Metadata thành Kịch bản điện ảnh.
     #     """
     #     try:
     #         sub = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
@@ -216,154 +217,266 @@ class StudioController:
     #         main = layout.get("main_content", {})
     #         active_form = layout.get("active_form", {})
 
-    #         # --- PHÂN TÍCH CHUYÊN SÂU LỚP GIAO DIỆN ---
-            
-    #         # 1. Sidebar & Điều hướng
-    #         sidebar_info = layout.get("sidebar", {})
+    #         # --- 1. PHÂN TÍCH THỊ GIÁC (VISUAL ANALYSIS) ---
+    #         sidebar_info = nav.get("sidebar", {})
     #         sidebar_desc = "Cố định bên trái"
     #         if sidebar_info.get("has_scroll"):
-    #             sidebar_desc += ", có thanh cuộn dọc để xem thêm menu."
+    #             sidebar_desc += " (Menu dài, cần cuộn chuột để thấy hết các mục)"
 
-    #         # 2. Bảng dữ liệu (Table) & Nút ẩn
+    #         # Phân tích Bảng & Trạng thái rỗng
     #         tables = main.get("tables", [])
     #         table_desc = []
+    #         is_empty_state = True
     #         for t in tables:
-    #             cols = ", ".join(t.get("columns", []))
-    #             scroll = "Hỗ trợ cuộn ngang" if t.get("scroll_info", {}).get("can_scroll_h") else "Hiển thị đầy đủ"
-    #             table_desc.append(f"Bảng dữ liệu [{cols}]. Đặc điểm: {scroll}.")
+    #             cols = t.get("columns", [])
+    #             if cols: is_empty_state = False
+    #             scroll = "Bảng rộng, cần hướng dẫn kéo thanh cuộn ngang" if t.get("needs_h_scroll") else "Hiển thị gọn trong màn hình"
+    #             table_desc.append(f"Bảng có {len(cols)} cột [{', '.join(cols[:5])}...]. Đặc điểm: {scroll}.")
 
-    #         # 3. Nút chức năng đặc biệt (Xuất file, Ẩn hiện cột)
-    #         special_actions = [a.get('label') for a in main.get('actions', []) 
-    #                         if any(x in a.get('label', '').lower() for x in ['xuất', 'cột', 'lọc', 'mật độ'])]
+    #         # Phân tích nút quan trọng (Primary Actions)
+    #         all_actions = main.get("actions", [])
+    #         primary_btn = next((a for a in all_actions if a.get('is_primary')), None)
+    #         special_actions = [a.get('label') for a in all_actions if any(x in a.get('label', '').lower() for x in ['xuất', 'cột', 'lọc', 'mật độ'])]
 
-    #         # 4. Chi tiết Form nhập liệu (Nếu có active_form)
-    #         form_desc = {}
+    #         # --- 2. PHÂN TÍCH FORM CHI TIẾT ---
+    #         form_info = ""
     #         if active_form:
-    #             form_desc = {
-    #                 "fields": [f"{i.get('label')} (Loại: {i.get('type')}, Bắt buộc: {i.get('required')})" 
-    #                         for i in active_form.get('inputs', [])],
-    #                 "buttons": [f"{b.get('label')} (Màu: {b.get('bg_color')}, Chính: {b.get('is_primary')})" 
-    #                             for b in active_form.get('actions', [])],
-    #                 "error_logic": "Nếu nhập thiếu trường bắt buộc, hệ thống sẽ báo đỏ tại trường đó."
-    #             }
+    #             fields = active_form.get('inputs', [])
+    #             btns = active_form.get('actions', [])
+    #             form_info = f"""
+    #     - Tên Form/Dialog: {active_form.get('context_name', 'Form nhập liệu')}
+    #     - Danh sách {len(fields)} trường: {', '.join([f"{i.get('label')} ({'Bắt buộc' if i.get('required') else 'Tùy chọn'})" for i in fields])}
+    #     - Nút xác nhận: {', '.join([f"{b.get('label')} (Màu: {b.get('rect', {}).get('bg_color')})" for b in btns])}
+    #     - Logic Validation: Nếu bỏ trống trường bắt buộc, hệ thống sẽ báo lỗi chữ đỏ tại label của trường đó.
+    #             """
 
-    #         # --- SOẠN THẢO BỨC THƯ (PROMPT) ---
+    #         # --- 3. SOẠN THẢO BỨC THƯ (PROMPT BIÊN KỊCH) ---
     #         prompt = f"""
-    # Nhiệm vụ: Viết kịch bản quay phim & lời thoại hướng dẫn sử dụng phần mềm Giai Pháp Vàng.
-    # Mục tiêu: {sub['sub_title']} (ID: {meta.get('form_id')})
+    # # NHIỆM VỤ: VIẾT KỊCH BẢN QUAY PHIM & LỜI THOẠI HƯỚNG DẪN SỬ DỤNG
+    # Mục tiêu: {sub['sub_title']}
+    # Trạng thái trang: {"[TRANG TRỐNG - Hướng dẫn tạo mới dữ liệu]" if is_empty_state else "[CÓ DỮ LIỆU - Hướng dẫn quản lý/tra cứu]"}
 
-    # 1. BỐI CẢNH HỆ THỐNG:
-    # - Đường dẫn URL: {nav.get('url')}
-    # - Cấu trúc Menu: {" > ".join(nav.get('hierarchy', []))}
+    # ## 1. BỐI CẢNH (CONTEXT)
+    # - URL: {nav.get('url')}
+    # - Lộ trình: {" > ".join(nav.get('breadcrumbs', []))}
     # - Sidebar: {sidebar_desc}
 
-    # 2. CHI TIẾT GIAO DIỆN DANH SÁCH (MAIN UI):
-    # - Các bảng hiện có: {'; '.join(table_desc)}
-    # - Nút thao tác trên bảng: {", ".join([a.get('label') for a in main.get('row_operations', [])])}
-    # - Công cụ bổ trợ: {", ".join(special_actions)} (Hướng dẫn người dùng cách ẩn/hiện cột hoặc xuất Excel tại đây).
+    # ## 2. QUAN SÁT GIAO DIỆN (MAIN UI)
+    # - Bảng dữ liệu: {'; '.join(table_desc) if table_desc else "Không phát hiện bảng."}
+    # - Nút hành động chính: {primary_btn.get('label') if primary_btn else "Không có nút nổi bật."}
+    # - Thao tác trên từng dòng: {", ".join([a.get('label') for a in main.get('row_operations', [])])}
+    # - Công cụ: {", ".join(special_actions)} (Hướng dẫn người dùng Xuất Excel hoặc Ẩn/Hiện cột nếu cần).
 
-    # 3. CHI TIẾT FORM NGHIỆP VỤ (ACTIVE FORM - LỚP SÂU):
-    # {"- Danh sách trường nhập liệu: " + ", ".join(form_desc.get('fields', [])) if form_desc else "- Không có Form nhập liệu riêng."}
-    # {"- Các nút xác nhận: " + ", ".join(form_desc.get('buttons', [])) if form_desc else ""}
-    # - Lưu ý về Combobox: Nếu là trường chọn, hướng dẫn nhấn để xổ danh sách liên kết từ bảng dữ liệu khác.
+    # ## 3. CHI TIẾT NỘI SOI FORM (DEEP SCAN)
+    # {form_info if form_info else "- Không có Form đang mở hoặc không có Form ẩn."}
 
-    # 4. KỊCH BẢN YÊU CẦU:
-    # Hãy soạn kịch bản theo định dạng:
-    # - Lời thoại (Voice-over): Thân thiện, chuyên nghiệp. Ví dụ: "Tại giao diện danh sách, quý khách nhấn vào nút Tạo mới có màu xanh để mở Form..."
-    # - Hành động (Action): Mô tả vị trí click dựa trên tọa độ Rect hoặc nhãn nút. 
-    # - Xử lý lỗi: Mô tả cách nhận biết khi nhấn Lưu mà bị báo lỗi (Trường nào hiện đỏ).
+    # ## 4. YÊU CẦU KỊCH BẢN (STORYLINE)
+    # Hãy soạn kịch bản chi tiết bao gồm:
+    # 1. Lời thoại (Voice-over): Chuyên nghiệp, chậm rãi. (Ví dụ: "Chào mừng quý khách... Hãy nhìn vào nút {primary_btn.get('label') if primary_btn else 'Tạo mới'}...")
+    # 2. Hành động (Action): Mô tả chính xác vị trí chuột (Dựa vào nhãn hoặc tọa độ trong JSON).
+    # 3. Chỉ dẫn vật lý: Mô tả màu sắc nút (Hex color) để người xem dễ nhận diện.
+    # 4. Xử lý tình huống: Nếu là Combobox, dặn người dùng "nhấn để chọn danh sách". Nếu nhấn Lưu lỗi, dặn "kiểm tra các ô báo đỏ".
 
-    # Dữ liệu JSON thô để tham khảo tọa độ: {json.dumps(meta, ensure_ascii=False)}
-    # """
-
+    # Dữ liệu JSON thô để tham khảo tọa độ chính xác: {json.dumps(meta, ensure_ascii=False)}
+    #         """
     #         return {"prompt_letter": prompt}
+            
     #     except Exception as e:
     #         print(f"❌ Lỗi get_formatted_meta_for_ai: {e}")
     #         return None
 
+   
+
+   
+
+
     def get_formatted_meta_for_ai(self, sub_id):
         """
-        BỨC THƯ CHI TIẾT GỬI AI v2.0 - Biến Metadata thành Kịch bản điện ảnh.
+        [PHIÊN BẢN BIÊN KỊCH THÔNG MINH 2026 - CHỐNG ĐẠN 100%]
+        Hợp nhất Metadata, phân tích trạng thái và ra lệnh kịch bản cho AI.
         """
         try:
-            sub = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
-            if not sub or not sub['metadata']: return None
+            # 1. Truy vấn dữ liệu từ Database
+            row = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
             
-            meta = json.loads(sub['metadata'])
-            nav = meta.get("navigation", {})
-            layout = meta.get("layout", {})
-            main = layout.get("main_content", {})
-            active_form = layout.get("active_form", {})
+            # FIX LỖI: sqlite3.Row không có .get(). Ép về dict để an toàn tuyệt đối.
+            if not row:
+                print(f"⚠️ Warning: sub_id {sub_id} không tồn tại trong DB.")
+                return None
+            sub = dict(row) 
 
-            # --- 1. PHÂN TÍCH THỊ GIÁC (VISUAL ANALYSIS) ---
-            sidebar_info = nav.get("sidebar", {})
-            sidebar_desc = "Cố định bên trái"
-            if sidebar_info.get("has_scroll"):
-                sidebar_desc += " (Menu dài, cần cuộn chuột để thấy hết các mục)"
+            # Kiểm tra trường metadata
+            raw_metadata_str = sub.get('metadata')
+            if not raw_metadata_str:
+                print(f"⚠️ Warning: sub_id {sub_id} rỗng metadata.")
+                return None
+            
+            # 2. Parse và Gọt sạch Metadata
+            try:
+                raw_meta = json.loads(raw_metadata_str)
+            except json.JSONDecodeError:
+                print(f"❌ Error: Metadata của {sub_id} không đúng định dạng JSON.")
+                return None
 
-            # Phân tích Bảng & Trạng thái rỗng
-            tables = main.get("tables", [])
-            table_desc = []
-            is_empty_state = True
-            for t in tables:
-                cols = t.get("columns", [])
-                if cols: is_empty_state = False
-                scroll = "Bảng rộng, cần hướng dẫn kéo thanh cuộn ngang" if t.get("needs_h_scroll") else "Hiển thị gọn trong màn hình"
-                table_desc.append(f"Bảng có {len(cols)} cột [{', '.join(cols[:5])}...]. Đặc điểm: {scroll}.")
+            # Gọi hàm gọt metadata (Hàm này phải trả về dict, không được return None)
+            clean_meta = self.clean_metadata_for_ai(raw_meta)
+            
+            # --- CHỐT CHẶN NONETYPE ---
+            if not clean_meta:
+                print(f"❌ Error: clean_metadata_for_ai trả về None cho sub_id {sub_id}")
+                return None
 
-            # Phân tích nút quan trọng (Primary Actions)
-            all_actions = main.get("actions", [])
-            primary_btn = next((a for a in all_actions if a.get('is_primary')), None)
-            special_actions = [a.get('label') for a in all_actions if any(x in a.get('label', '').lower() for x in ['xuất', 'cột', 'lọc', 'mật độ'])]
+            # Dùng .get() với giá trị mặc định cho tất cả để an toàn tuyệt đối
+            p_info = clean_meta.get('page_info', {})
+            form_data = clean_meta.get('form_to_fill', [])
+            table = clean_meta.get('table_structure', {})
+            all_actions = clean_meta.get('available_actions', [])
+            
+            # Trích xuất thông tin trạng thái
+            is_dialog = p_info.get('is_dialog_open', False)
+            has_data = table.get('has_data', False)
+            
+            # --- GOM TẤT CẢ NÚT BẤM (TOOLBAR + FORM) ---
+            btn_labels = []
+            if isinstance(all_actions, list):
+                # Chỉ lấy label, bỏ trùng, bọc trong ngoặc vuông để AI dễ nhận diện
+                btn_labels = sorted(list(set(
+                    [f"[{a['label']}]" for a in all_actions if isinstance(a, dict) and a.get('label')]
+                )))
+            
+            # --- LOGIC PHÂN TÍCH NGỮ CẢNH (TRÁNH AI BỊA ĐẶT) ---
+            has_form = isinstance(form_data, list) and len(form_data) > 0
+            
+            if is_dialog or has_form:
+                status_context = "[ĐANG TRONG FORM] -> Tập trung hướng dẫn điền thông tin chi tiết vào các ô nhập liệu."
+                primary_flow = "Điền thông tin và kết thúc bằng nút Lưu."
+            elif not has_data:
+                status_context = "[TRANG TRỐNG] -> Dữ liệu chưa có. Phải hướng dẫn nhấn nút 'Tạo mới' hoặc 'Thêm' để bắt đầu."
+                primary_flow = "Nhấn nút khởi tạo để mở Form nhập liệu."
+            else:
+                status_context = "[DANH SÁCH CÓ DỮ LIỆU] -> Trang đã có dữ liệu. Hướng dẫn cách xem, lọc hoặc quản lý."
+                primary_flow = "Quan sát bảng dữ liệu và thực hiện các thao tác quản lý."
 
-            # --- 2. PHÂN TÍCH FORM CHI TIẾT ---
-            form_info = ""
-            if active_form:
-                fields = active_form.get('inputs', [])
-                btns = active_form.get('actions', [])
-                form_info = f"""
-        - Tên Form/Dialog: {active_form.get('context_name', 'Form nhập liệu')}
-        - Danh sách {len(fields)} trường: {', '.join([f"{i.get('label')} ({'Bắt buộc' if i.get('required') else 'Tùy chọn'})" for i in fields])}
-        - Nút xác nhận: {', '.join([f"{b.get('label')} (Màu: {b.get('rect', {}).get('bg_color')})" for b in btns])}
-        - Logic Validation: Nếu bỏ trống trường bắt buộc, hệ thống sẽ báo lỗi chữ đỏ tại label của trường đó.
-                """
-
-            # --- 3. SOẠN THẢO BỨC THƯ (PROMPT BIÊN KỊCH) ---
+            
+            # --- 3. SOẠN THẢO PROMPT CHIẾN THUẬT (BẢN CHUẨN HÓA ACTION) ---
             prompt = f"""
-    # NHIỆM VỤ: VIẾT KỊCH BẢN QUAY PHIM & LỜI THOẠI HƯỚNG DẪN SỬ DỤNG
-    Mục tiêu: {sub['sub_title']}
-    Trạng thái trang: {"[TRANG TRỐNG - Hướng dẫn tạo mới dữ liệu]" if is_empty_state else "[CÓ DỮ LIỆU - Hướng dẫn quản lý/tra cứu]"}
+### 🎭 NHIỆM VỤ: BIÊN KỊCH CHO HỆ THỐNG "{sub.get('sub_title', 'Phần mềm quản lý')}"
 
-    ## 1. BỐI CẢNH (CONTEXT)
-    - URL: {nav.get('url')}
-    - Lộ trình: {" > ".join(nav.get('breadcrumbs', []))}
-    - Sidebar: {sidebar_desc}
+---
+### 📍 1. BỐI CẢNH (SYSTEM CONTEXT)
+- **Vị trí hiện tại:** {" > ".join(p_info.get('breadcrumbs', []))}
+- **Trạng thái:** {status_context}
+- **NHIỆM VỤ:** Chỉ lập kịch bản cho các thành phần xuất hiện trong mục 2. TUYỆT ĐỐI không hướng dẫn các bước điều hướng bên ngoài (như click Menu, click trang chủ).
 
-    ## 2. QUAN SÁT GIAO DIỆN (MAIN UI)
-    - Bảng dữ liệu: {'; '.join(table_desc) if table_desc else "Không phát hiện bảng."}
-    - Nút hành động chính: {primary_btn.get('label') if primary_btn else "Không có nút nổi bật."}
-    - Thao tác trên từng dòng: {", ".join([a.get('label') for a in main.get('row_operations', [])])}
-    - Công cụ: {", ".join(special_actions)} (Hướng dẫn người dùng Xuất Excel hoặc Ẩn/Hiện cột nếu cần).
+### 🔍 2. QUAN SÁT THỊ GIÁC (UI ANALYSIS)
+- **Các nút:** {', '.join(btn_labels) if btn_labels else "Không có"}
+- **Ô nhập liệu (Form):**
+{self._format_form_for_ai(form_data)}
 
-    ## 3. CHI TIẾT NỘI SOI FORM (DEEP SCAN)
-    {form_info if form_info else "- Không có Form đang mở hoặc không có Form ẩn."}
+### 📝 3. YÊU CẦU ĐẦU RA (JSON ONLY)
+Trả về 1 JSON ARRAY phẳng. 
 
-    ## 4. YÊU CẦU KỊCH BẢN (STORYLINE)
-    Hãy soạn kịch bản chi tiết bao gồm:
-    1. Lời thoại (Voice-over): Chuyên nghiệp, chậm rãi. (Ví dụ: "Chào mừng quý khách... Hãy nhìn vào nút {primary_btn.get('label') if primary_btn else 'Tạo mới'}...")
-    2. Hành động (Action): Mô tả chính xác vị trí chuột (Dựa vào nhãn hoặc tọa độ trong JSON).
-    3. Chỉ dẫn vật lý: Mô tả màu sắc nút (Hex color) để người xem dễ nhận diện.
-    4. Xử lý tình huống: Nếu là Combobox, dặn người dùng "nhấn để chọn danh sách". Nếu nhấn Lưu lỗi, dặn "kiểm tra các ô báo đỏ".
+**Cấu trúc 1 object mẫu (BẮT BUỘC ĐÚNG TÊN KEY):**
+{{
+    "step": 1, 
+    "vo": "Lời thoại...", 
+    "action": "type hoặc click", 
+    "target_label": "Khớp 100% mục 2",
+    "value": "Dữ liệu mẫu"
+}}
 
-    Dữ liệu JSON thô để tham khảo tọa độ chính xác: {json.dumps(meta, ensure_ascii=False)}
-            """
-            return {"prompt_letter": prompt}
-            
+**ĐIỀU KHOẢN NGHIÊM NGẶT:**
+1. **Key "value":** Tuyệt đối không được viết thành "input_value" hay "data". Phải là "value".
+2. **Ngữ cảnh:** Vì đang trong Form, bước 1 phải là ô nhập liệu đầu tiên (Mã chi nhánh). Không chào hỏi rườm rà.
+3. **Dữ liệu mẫu:** Sử dụng dữ liệu thực tế ngành vàng bạc (VD: Mã: CH-01, Tên: Tiệm Vàng Kim Long, Địa chỉ: 123 Chợ Thiếc...).
+4. **Action:** Chỉ dùng `type` cho ô nhập, `click` cho nút bấm.
+
+**Chỉ trả về JSON. Không giải thích.**
+"""
+            return {
+                "prompt_letter": prompt,
+                "clean_metadata": clean_meta 
+            }
+
         except Exception as e:
-            print(f"❌ Lỗi get_formatted_meta_for_ai: {e}")
+            print(f"❌ Lỗi nghiêm trọng tại get_formatted_meta_for_ai: {e}")
+            traceback.print_exc() 
             return None
+
+    def _format_form_for_ai(self, form_data):
+        """Định dạng danh sách Form để AI dễ đọc"""
+        if not isinstance(form_data, list):
+            return "  - Không có form đang mở hoặc không phát hiện ô nhập liệu."
         
+        lines = []
+        for f in form_data:
+            req = "[Bắt buộc]" if f.get('required') else ""
+            lines.append(f"  - {f['label']} (Loại: {f['type']}) {req}")
+        return "\n".join(lines) if lines else "  - Không có form đang mở."
+
+    def clean_metadata_for_ai(self, raw_data):
+        """
+        Gọt sạch tọa độ rác, lọc nút bấm ẩn, chỉ để lại dữ liệu nghiệp vụ.
+        PHẢI CHẶN LỖI NONETYPE TẠI ĐÂY.
+        """
+        if not raw_data:
+            return None
+
+        # 1. Gom nút từ Layout (Toolbar)
+        # Sử dụng .get() kèm default là {} để không bao giờ bị None
+        layout_data = raw_data.get("layout", {})
+        layout_actions = [
+            {"label": a.get("label"), "type": "button"} 
+            for a in layout_data.get("actions", [])
+            if float(a.get("opacity", 1)) > 0 and a.get("is_visible") and a.get("label")
+        ]
+
+        # 2. Lọc Active Form - CHỖ GÂY LỖI ĐÃ ĐƯỢC FIX TẠI ĐÂY
+        # Đảm bảo active_form luôn là một dict, kể cả khi raw_data không có key đó
+        active_form = raw_data.get("active_form") or {} 
         
+        # Bây giờ gọi .get() thoải mái vì active_form ít nhất là {}
+        form_actions = [
+            {"label": a.get("label"), "type": "button"}
+            for a in active_form.get("actions", [])
+            if a.get("label")
+        ]
+
+        # 3. Lọc Input Form
+        form_inputs = [
+            {
+                "label": i.get("label"),
+                "type": i.get("type"),
+                "required": i.get("required", False)
+            }
+            for i in active_form.get("inputs", [])
+            if i.get("label")
+        ]
+        
+        # 4. Lọc Cấu trúc bảng
+        tables = layout_data.get("tables", [])
+        table_cols = tables[0].get("columns", []) if tables else []
+        has_data = False
+        if tables:
+            has_data = tables[0].get("count", 0) > 0
+
+        # 5. Hợp nhất Action
+        all_available_actions = layout_actions + form_actions
+
+        return {
+            "page_info": {
+                "url": raw_data.get("url"),
+                "is_dialog_open": raw_data.get("state", {}).get("is_dialog_open", False),
+                "breadcrumbs": raw_data.get("navigation", {}).get("breadcrumbs", [])
+            },
+            "available_actions": all_available_actions,
+            "form_to_fill": form_inputs,
+            "table_structure": {
+                "columns": table_cols,
+                "has_data": has_data
+            }
+        }
+    
     def delete_sub_content(self, sub_id, folder_name, sub_folder):
         try:
             self.db.execute("DELETE FROM sub_contents WHERE id = ?", (sub_id,))

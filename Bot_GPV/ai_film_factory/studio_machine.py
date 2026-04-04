@@ -5,91 +5,76 @@ class StudioMachine:
         self.target_domain = target_domain
         self.vision = vision_machine 
 
-    
-    async def execute_step(self, page, step, effect_engine=None):
-        target_click = step.get("click")
-        target_hover = step.get("hover")
-        target_type = step.get("type")
-        
-        raw_target = target_click or target_hover or target_type
-        if not raw_target: return
-
-        # 2. Quét trạng thái UI
-        metadata = await self.vision.scan_page(page)
-        # Sửa lại cách lấy dữ liệu cho khớp với VisionMachine của Vũ
-        active_form = metadata.get('active_form') or {}
-        layout = metadata.get('layout') or {}
-        
-        # Check xem có Dialog đang chắn đường không
-        has_dialog = await page.locator(".MuiDialog-root, [role='dialog']").is_visible()
-
-        # 3. CHIẾN THUẬT SELECTOR THÔNG MINH
-        # Nếu target là text thuần (không có dấu # hoặc .), ta bọc nó vào text selector
-        is_selector = any(char in str(raw_target) for char in ['#', '.', '[', '>'])
-        
-        if not is_selector:
-            # Biến text thành Playwright Text Selector
-            base_selector = f"text='{raw_target}'"
-        else:
-            base_selector = raw_target
-
-        if has_dialog:
-            final_selector = f".MuiDialog-root >> {base_selector}"
-        else:
-            final_selector = base_selector
+    async def execute_step(self, page, step, vision_machine):
+        """
+        [PHIÊN BẢN STUDIO ĐIỆN ẢNH 2026]
+        Đã fix lỗi nhầm Header Table và lỗi Locator.fill trên thẻ Div.
+        """
+        target_label = str(step.get("target_label", ""))
+        action = str(step.get("action", "click")).lower()
+        value = str(step.get("value", ""))
 
         try:
-            # Tìm Element (Thêm bộ lọc visible để tránh lấy các element ẩn bên dưới)
-            locator = page.locator(final_selector).visible.first
-            await locator.wait_for(state="visible", timeout=5000)
-            
-            # Cuộn trang
-            await locator.scroll_into_view_if_needed()
-            box = await locator.bounding_box()
-            if not box: return
+            if not target_label:
+                print("⚠️ Bỏ qua bước: Không có target_label")
+                return True # Vẫn trả về True để kịch bản tiếp tục
 
-            cx, cy = box['x'] + box['width']/2, box['y'] + box['height']/2
-            
-            # Di chuyển chuột (steps=20 giúp video trông tự nhiên hơn)
-            await page.mouse.move(cx, cy, steps=20)
+            print(f"🎬 Diễn bước: {target_label} ({action})...")
+
+            # --- CHIẾN THUẬT ĐỊNH DANH THÔNG MINH ---
+            if "type" in action:
+                # Ưu tiên 1: Tìm chính xác label gắn với input (Chuẩn Material UI)
+                # Dùng get_by_label giúp né hoàn toàn các thẻ Div tiêu đề bảng
+                locator = page.get_by_label(target_label, exact=True).first
+                
+                # Ưu tiên 2: Nếu không thấy label, tìm input/textarea nằm gần text đó
+                if await locator.count() == 0:
+                    locator = page.locator(f"input:near(:text('{target_label}'))").first
+            else:
+                # Đối với Click (Nút bấm): Ưu tiên tìm role button để né text rác
+                locator = page.get_by_role("button", name=target_label).first
+                
+                # Nếu không tìm thấy button, mới dùng text selector truyền thống
+                if await locator.count() == 0:
+                    selector = f"text='{target_label}' >> visible=true"
+                    locator = page.locator(selector).first
 
             # --- THỰC THI ---
-            if target_type:
-                value = str(step.get("value", ""))
-                # Check Autocomplete từ metadata
-                inputs = active_form.get('inputs', [])
-                is_auto = any(raw_target in str(f.get('label')) for f in inputs if f.get('type') == 'autocomplete')
-
-                await page.mouse.click(cx, cy)
-                await asyncio.sleep(0.3)
+            # Chờ tối đa 5s để phần tử sẵn sàng
+            await locator.wait_for(state="visible", timeout=5000)
+            
+            box = await locator.bounding_box()
+            if box:
+                cx = box['x'] + box['width'] / 2
+                cy = box['y'] + box['height'] / 2
                 
-                if is_auto:
-                    await page.keyboard.type(value, delay=100)
-                    # Chờ menu Autocomplete xuất hiện
-                    try:
-                        await page.wait_for_selector(".MuiAutocomplete-listbox", timeout=3000)
-                        await page.keyboard.press("ArrowDown")
-                        await page.keyboard.press("Enter")
-                    except:
-                        await page.keyboard.press("Enter") # Fallback nếu không thấy list
+                # Di chuyển chuột thực tế (để MoviePy quay được cảnh di chuyển)
+                await page.mouse.move(cx, cy, steps=15)
+                
+                if "type" in action:
+                    # Đảm bảo focus trước khi fill để trigger các event JS của trang
+                    await locator.click() 
+                    await locator.fill(value)
+                    # Nhấn Tab để báo hiệu nhập xong (giúp Material UI lưu state)
+                    await page.keyboard.press("Tab") 
+                    print(f"⌨️  Đã nhập '{value}' vào {target_label}")
                 else:
-                    await page.keyboard.type(value, delay=80)
-
-            elif target_click:
-                if effect_engine:
-                    await effect_engine.apply_spotlight(page, final_selector)
-                await page.mouse.click(cx, cy)
+                    await page.mouse.click(cx, cy)
+                    print(f"✅ Đã Click: {target_label}")
                 
-            elif target_hover:
-                await asyncio.sleep(0.5)
+                # Nghỉ một chút để video quay kịp khoảnh khắc
+                await asyncio.sleep(0.5) 
+                return True
+            else:
+                print(f"⚠️ Không lấy được tọa độ cho: {target_label}")
+                return False
 
         except Exception as e:
-            print(f"⚠️ Navigation Fallback cho: {raw_target}")
-            await self._handle_navigation(page, raw_target)
-
-        await page.wait_for_timeout(800)
-
-
+            print(f"❌ Lỗi thực thi bước '{target_label}': {e}")
+            # Chụp ảnh màn hình lúc lỗi để debug nếu cần
+            # await page.screenshot(path=f"error_{target_label}.png")
+            return False
+            
     async def _handle_navigation(self, page, target_menu):
         """Hàm cứu cánh khi Bot bị lạc đường"""
         clean_text = str(target_menu).replace("text=", "").strip("'\"")

@@ -1,13 +1,11 @@
 import os
 import json
+import asyncio
 from datetime import datetime
 from config import Config 
 
 class VisionMachine:
     def __init__(self):
-        """
-        Khởi tạo 'con mắt' AI để quét metadata từ trình duyệt.
-        """
         self.scanner_script = ""
         current_dir = os.path.dirname(os.path.abspath(__file__))
         js_path = os.path.join(current_dir, 'scanner.js')
@@ -18,111 +16,90 @@ class VisionMachine:
                 with open(js_path, 'r', encoding='utf-8') as f:
                     content = f.read().strip()
                 
-                # Bọc nội dung vào khối Async Try-Catch để an toàn trên Browser
                 self.scanner_script = f"""
                 async () => {{
                     try {{
                         {content}
                         if (typeof scanPage === 'function') {{
                             return await scanPage();
-                        }} else {{
-                            return {{ error: 'Hàm scanPage không tồn tại trong scanner.js' }};
                         }}
+                        return {{ error: 'Hàm scanPage không tồn tại' }};
                     }} catch (e) {{
-                        return {{ error: 'JS Runtime Error: ' + e.message, stack: e.stack }};
+                        return {{ error: 'JS Error: ' + e.message }};
                     }}
                 }}
                 """
-                print(f"✅ VisionMachine: Sẵn sàng nội soi hệ thống.")
+                print(f"✅ VisionMachine: Đã sẵn sàng.")
             else:
-                print(f"⚠️ VisionMachine Warning: Không tìm thấy {js_path}")
                 self.scanner_script = "async () => { return { error: 'Missing scanner.js' }; }"
         except Exception as e:
             print(f"❌ Vision Init Error: {e}")
-            self.scanner_script = "async () => { return { error: 'Init script failed' }; }"
-       
 
-
-    async def scan_page(self, page, is_async=True): # Chuyển hẳn sang async def
-        bot_name = "🎭 [Bot Diễn Viên]" if is_async else "🕵️ [Bot Trinh Sát]"
-        print(f"{bot_name}: Đang nội soi giao diện...")
+    async def _execute_scan(self, page, is_acting: bool):
+        """Hàm thực thi lõi - Trái tim của hệ thống quét"""
+        bot_tag = "🎭 [Bot Diễn Viên]" if is_acting else "🕵️ [Bot Trinh Sát]"
         
+        if page.is_closed():
+            print(f"🛑 {bot_tag}: Trình duyệt đã đóng.")
+            return None
+
         try:
-            # 1. ĐỢI MẠNG RẢNH (Phải có await)
-            print(f"{bot_name}: Đang đợi dữ liệu tải xong (Network Idle)...")
+            # 1. Đợi trạng thái mạng ổn định
             try:
-                await page.wait_for_load_state('networkidle', timeout=15000) 
-            except Exception:
-                print(f"⚠️ {bot_name}: Đợi quá lâu, tiến hành quét cưỡng chế...")
+                await page.wait_for_load_state('networkidle', timeout=8000) 
+            except:
+                pass 
 
-            # 2. THỰC THI SCRIPT (Bắt buộc phải await page.evaluate)
-            data = None
-            for attempt in range(2):
-                # QUAN TRỌNG: Phải có await ở đây!
-                data = await page.evaluate(self.scanner_script) 
-                
-                # Kiểm tra data thật sau khi đã await
-                if data and isinstance(data, dict) and "error" not in data:
-                    break
-                
-                print(f"🔄 {bot_name}: Thử lại lần {attempt + 1}...")
-                import asyncio
-                await asyncio.sleep(1) # Dùng asyncio.sleep thay vì time.sleep
+            # 2. Cấy vai diễn vào Browser trước khi thực thi
+            await page.evaluate(f"window.isBotActing = {'true' if is_acting else 'false'};")
 
-            # 3. XỬ LÝ HẬU KỲ
-            if not data or (isinstance(data, dict) and "error" in data):
-                msg = data.get('error', 'No data') if data else "Empty result"
-                print(f"🛑 {bot_name} Lỗi quét trang tại {page.url}: {msg}")
-                return None 
+            # 3. Thực thi nội soi
+            data = await page.evaluate(self.scanner_script)
+            
+            if not data or "error" in data:
+                print(f"🛑 {bot_tag} Lỗi: {data.get('error', 'No data')}")
+                return None
 
-            # 4. TRẢ VỀ CỤC DATA CHUẨN
-            result = {
+            # 4. Đóng gói kết quả chuẩn hóa
+            return {
                 "url": page.url,
-                "layout": data.get("main_content", data.get("layout", {})),
+                "mode": "ACTOR" if is_acting else "SCOUT",
+                "layout": data.get("main_content", {}),
                 "navigation": data.get("navigation", {}),
                 "active_form": data.get("active_form", {}),
-                "scanned_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "timestamp": datetime.now().strftime("%H:%M:%S")
             }
-            
-            print(f"✅ {bot_name}: Đã lấy Metadata thành công.")
-            return result
-
         except Exception as e:
-            print(f"❌ Lỗi thực thi VisionMachine tại {bot_name}: {e}")
+            print(f"❌ {bot_tag} Exception: {e}")
             return None
+
+    async def scout_report(self, page):
+        """
+        NHIỆM VỤ BOT TRINH SÁT:
+        - Quét sâu (Deep Scan), tự click vào các nút 'Thêm/Sửa' để lấy Metadata của Form ẩn.
+        - Phục vụ giai đoạn lập kịch bản sản xuất.
+        """
+        print("🕵️ [Bot Trinh Sát]: Đang đi thám thính cấu trúc trang...")
+        return await self._execute_scan(page, is_acting=False)
+
+    async def actor_view(self, page):
+        """
+        NHIỆM VỤ BOT DIỄN VIÊN:
+        - Quét nhanh bề mặt (Current View), lấy tọa độ chính xác để AI tương tác.
+        - Phục vụ giai đoạn quay phim/quay màn hình video tự động.
+        """
+        print("🎭 [Bot Diễn Viên]: Đang đo đạc tọa độ để diễn...")
+        return await self._execute_scan(page, is_acting=True)
 
     
     async def check_health(self, page):
-        """
-        Kiểm tra nhanh xem trang có khả dụng (có UI) không.
-        Sử dụng kết quả từ scan_page để đánh giá trạng thái trang.
-        """
-        # 1. Gọi hàm nội soi (Đảm bảo có await vì scan_page là async)
-        data = await self.scan_page(page, is_async=True) 
+        """Kiểm tra nhanh xem trang có rỗng hay không bằng Actor View"""
+        data = await self.actor_view(page)
+        if not data: return False, ["Lỗi kết nối"]
         
-        # 2. Kiểm tra nếu không lấy được dữ liệu
-        if not data or not isinstance(data, dict):
-            return False, ["Hệ thống quét bị lỗi hoặc trang không phản hồi."]
+        layout = data.get('layout', {})
+        has_ui = len(layout.get('actions', [])) > 0 or len(layout.get('inputs', [])) > 0
         
-        # 3. Trích xuất dữ liệu an toàn (Dùng 'or {}' để tránh lỗi .get() trên None)
-        layout = data.get('layout') or {}
-        active_form = data.get('active_form') or {}
-        
-        # 4. Xác định nội dung chính đang hiển thị (Ưu tiên Form nếu đang mở)
-        # Nếu layout có actions thì lấy layout, không thì soi vào Form
-        main_content = layout if layout.get('actions') else active_form
-        
-        # 5. Kiểm tra các thành phần "sống" của UI
-        # Check actions (nút bấm), inputs (ô nhập liệu) ở vùng nội dung chính
-        has_actions = len(main_content.get('actions', [])) > 0
-        has_inputs = len(main_content.get('inputs', [])) > 0
-        
-        # Check bảng dữ liệu (thường nằm trong layout)
-        has_tables = len(layout.get('tables', [])) > 0
-
-        # 6. Kết luận: Nếu không có nút, không có ô nhập, cũng chẳng có bảng -> Trang trống
-        if not (has_actions or has_inputs or has_tables):
-            return False, ["Trang trống (Empty State) hoặc chưa load xong các thành phần UI."]
-            
-        # Mọi thứ ổn định
+        if not has_ui:
+            return False, ["Trang trống hoặc chưa load UI"]
         return True, []

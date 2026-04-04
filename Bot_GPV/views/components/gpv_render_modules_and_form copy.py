@@ -7,12 +7,6 @@ from Bot_GPV.core.gpv_ai_logic_knowledge import AIScripts
 from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
 from config import Config
 
-import asyncio
-import nest_asyncio
-nest_asyncio.apply()
-
-from Bot_GPV.utils.async_helper import run_async
-
 # Khởi tạo bộ não AI
 ai_script = AIScripts()
 
@@ -39,8 +33,7 @@ def render_gpv_logic(ctrl, p, ai_script):
             with st.spinner("Đang quét danh sách Module..."):
                 extractor = GiaiphapvangScraper()
                 # Lấy danh sách module từ trang chủ phần mềm
-                # home_modules = extractor.get_home_modules()
-                home_modules = run_async(extractor.get_home_modules())
+                home_modules = extractor.get_home_modules()
                 
                 count_new = 0
                 for mod in home_modules:
@@ -87,10 +80,7 @@ def render_gpv_logic(ctrl, p, ai_script):
 
 
 def render_gpv_forms(ctrl, p, modul_name, ai_script):
-    """
-    Giao diện Cấp 2: Quét sâu từng Form, đồng bộ Metadata vào DB.
-    Đã tối ưu truy xuất theo cấu trúc Omni Metadata 2026.
-    """
+    """Giao diện Cấp 2: Quét sâu từng Form, đồng bộ Metadata vào DB"""
     project_folder = p.get('folder_name', "Giai_Phap_Vang")
     
     c1, c2 = st.columns([3, 1.2])
@@ -102,43 +92,38 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
     
     if c2.button("🔍 CẬP NHẬT FORM (CẤP 2)", type="primary", use_container_width=True, key="btn_deep_scan"):
         with st.spinner(f"Đang mổ xẻ Module {modul_name}..."):
-            # 1. Lấy dữ liệu mới nhất từ DB để so khớp
+            # 1. Lấy dữ liệu mới nhất từ DB
             db_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
             
-            # 2. Tìm URL của Module Home (điểm bắt đầu để quét sâu)
+            # 2. Tìm URL của Module Home (Lấy từ cột 'url' thay vì 'status' cho chuẩn)
             mod_home = next((s for s in db_subs if s['sub_title'] == f"{modul_name}|Home"), None)
-            target_url = mod_home.get('url') if mod_home else None
             
+            # Ưu tiên lấy link từ cột 'url', nếu cũ quá thì ngó tạm cột 'status'
+            target_url = mod_home.get('url') if mod_home and mod_home.get('url') else mod_home.get('status') if mod_home else None
             
             if target_url:
                 extractor = GiaiphapvangScraper()
-                deep_data = None  # Khởi tạo "túi rỗng" ở đây là chuẩn bài!
-
-                try:
-                    # Gán thẳng kết quả đã giải mã vào deep_data
-                    deep_data = run_async(extractor.update_module_details(project_folder, modul_name, target_url))
-                except Exception as e:
-                    st.error(f"❌ Lỗi khi quét Playwright: {e}")
-                    deep_data = None # Đảm bảo nó vẫn là None nếu có lỗi xảy ra
+                # Chạy Playwright để vét sạch cấu trúc
+                deep_data = extractor.update_module_details(project_folder, modul_name, target_url)
                 
                 if deep_data:
                     for form_name, f_info in deep_data.items():
                         full_title = f"{modul_name}|{form_name}"
-                        metadata_json = f_info.get('structure', {}) # Đây là metadata 'vét cạn'
+                        metadata_json = f_info.get('structure', {})
                         form_url = f_info.get('url', "")
                         
                         existing_form = next((s for s in db_subs if s['sub_title'] == full_title), None)
                         
                         if existing_form:
-                            # CẬP NHẬT (Sửa lại đúng tên tham số trong StudioController)
+                            # CẬP NHẬT: Dùng Named Arguments để chống nhảy cột
                             ctrl.update_sub_content(
                                 sub_id=existing_form['id'], 
-                                url=form_url, 
-                                metadata=metadata_json, 
-                                status="Đã quét"
+                                new_url=form_url,
+                                new_metadata=metadata_json,
+                                new_status="Chưa quay" # Reset status nếu cần
                             )
                         else:
-                            # THÊM MỚI nếu chưa có trong DB
+                            # THÊM MỚI: Truyền đủ 5 tham số chính chủ
                             ctrl.add_sub_content(
                                 t_id=p['id'],
                                 sub_title=full_title,
@@ -159,7 +144,7 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
     
     display_data = []
     for sub in current_subs:
-        # Giải mã Metadata an toàn
+        # Xử lý Metadata an toàn
         meta = sub.get('metadata')
         if isinstance(meta, str) and meta.strip():
             try: meta = json.loads(meta)
@@ -167,47 +152,29 @@ def render_gpv_forms(ctrl, p, modul_name, ai_script):
         elif not isinstance(meta, dict):
             meta = {}
 
-        # 1. TRUY XUẤT THEO CẤU TRÚC OMNI: layout -> main_content
-        layout = meta.get('layout', {})
-        main = layout.get('main_content', {})
-        active_form = layout.get('active_form', {}) # Ưu tiên nếu đã 'nội soi' form
-
-        # Gom Fields (Ưu tiên fields trong form nếu đang mở, nếu không lấy main)
-        target_inputs = active_form.get('inputs') if active_form else main.get('inputs', [])
-        fields = [f.get('label') or f.get('placeholder') or f.get('name') 
-                  for f in target_inputs if isinstance(f, dict)]
+        # 1. Trích xuất Fields (Labels)
+        fields = [f.get('label') for f in meta.get('form_fields', []) if f.get('label')]
+        sub['preview_fields'] = "📝 " + ", ".join(fields[:3]) + ("..." if len(fields) > 3 else "") if fields else "🔍 Chưa có field"
         
-        sub['all_fields'] = fields 
-        sub['preview_fields'] = "📝 " + ", ".join(fields[:5]) + ("..." if len(fields) > 5 else "") if fields else "🔍 Trống"
+        # 2. Trích xuất Actions (Buttons) - Fix lỗi lặp item['label']
+        btns = meta.get('actions', [])
+        # Lọc các nút quan trọng
+        important_keywords = ["Lưu", "Thêm", "Xuất", "In", "Tính"]
+        imp = [b for b in btns if any(kw in (b.get('label', '') if isinstance(b, dict) else str(b)) for kw in important_keywords)]
         
-        # 2. GOM ACTIONS (Nút bấm chính + Nút trong dòng)
-        all_btns = []
-        raw_btns = main.get('actions', []) + main.get('row_operations', [])
-        if active_form:
-            raw_btns += active_form.get('actions', [])
-
-        for item in raw_btns:
-            if isinstance(item, dict):
-                label = item.get('label', '')
-            else:
-                label = str(item)
-                
-            if label and label not in all_btns:
-                all_btns.append(label)
-
-        sub['all_actions'] = all_btns 
-        
-        # Sắp xếp ưu tiên các nút quan trọng ngành vàng lên đầu Preview
-        priority_keywords = ["Lưu", "Thêm", "Tính", "In", "Duyệt", "Quét"]
-        sorted_btns = sorted(all_btns, key=lambda x: any(kw in x for kw in priority_keywords), reverse=True)
-
-        sub['preview_actions'] = "⚡ " + ", ".join(sorted_btns[:6]) + ("..." if len(sorted_btns) > 6 else "") if sorted_btns else "🚫 Không nút"
-        
+        source_list = imp[:3] if imp else btns[:3]
+        labels = []
+        for item in source_list:
+            if isinstance(item, dict): labels.append(str(item.get('label', '')))
+            else: labels.append(str(item))
+            
+        sub['preview_actions'] = "⚡ " + ", ".join(filter(None, labels)) if labels else ""
         display_data.append(sub)
-
-    # GỌI COMPONENT RENDER TỪNG DÒNG (Card UI)
+    
+    # GỌI COMPONENT HIỂN THỊ
     if display_data:
         gp_component = RenderForm() 
+        # Đảm bảo truyền đủ project_folder để AI/Hệ thống biết đường dẫn lưu file
         gp_component.render_item_rows(ctrl, p, display_data, ai_script, project_folder)
     else:
-        st.info("💡 Module này chưa có Form. Vũ hãy nhấn 'CẬP NHẬT FORM (CẤP 2)' ở trên để quét tri thức.")
+        st.info("Module này chưa có Form. Vũ hãy nhấn 'CẬP NHẬT FORM (CẤP 2)' ở trên nhé!")
