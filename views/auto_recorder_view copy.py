@@ -15,7 +15,7 @@ nest_asyncio.apply() # Chống lỗi loop cho Streamlit trên Windows
 load_dotenv()
 
 def render_auto_recorder(sub_path, kb_instance):
-    st.header("🎬 Giaiphapvang Studio Bot")
+    st.header("🎬 UngDungVang Studio Bot")
     st.caption("Robot tự động thực hiện thao tác và AI biên soạn video lồng tiếng.")
 
     if 'agent' not in st.session_state:

@@ -27,7 +27,7 @@ ai_studio = get_ai_manager()
 
 def main():
     st.set_page_config(
-        page_title="Giaiphapvang Studio", 
+        page_title="UngDungVang Studio", 
         layout="wide", 
         page_icon="🎬"
     )

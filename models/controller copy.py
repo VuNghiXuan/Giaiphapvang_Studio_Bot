@@ -1,8 +1,10 @@
 import os
 import shutil
+from datetime import datetime
 import json
 from config import Config
 from .db_engine import DBEngine
+import traceback
 
 class StudioController:
     def __init__(self):
@@ -46,315 +48,337 @@ class StudioController:
             print(f"❌ Lỗi delete_tutorial: {e}")
             return False
 
-    # --- QUẢN LÝ BÀI HỌC CON (SUB_CONTENTS) ---
+    # --- HELPERS ---
+    # def _get_default_metadata(self):
+    #     """Khung Metadata chuẩn OMNI 2026 - Đồng bộ tuyệt đối với VisionMachine"""
+    #     return {
+    #         "navigation": {"url": "", "hierarchy": [], "current_page": ""},
+    #         "state": {"has_overlay": False, "is_dialog_open": False, "errors": []},
+    #         "layout": {
+    #             "sidebar": {"items": [], "has_scroll": False},
+    #             "main_content": {
+    #                 "actions": [], "row_operations": [], "inputs": [], "tables": []
+    #             },
+    #             "active_form": None 
+    #         },
+    #         "scanned_at": ""
+    #     }
 
+    def _get_default_metadata(self):
+        return {
+            "navigation": {"url": "", "breadcrumbs": [], "sidebar_items": []},
+            "state": {"is_dialog_open": False, "has_data": False},
+            "layout": {"actions": [], "inputs": [], "tables": []},
+            "scanned_at": ""
+        }
+    
     def add_sub_content(self, t_id, sub_title, parent_folder, url=None, metadata=None):
-        """
-        Thêm mới sub-content: 
-        1. Chống trùng URL nghiệp vụ.
-        2. Tự động định danh thư mục theo ID (Chống trùng folder vật lý).
-        3. Chuẩn hóa Metadata từ Scanner.js 2026.
-        """
         try:
-            # 1. KIỂM TRA TRÙNG LẶP (Dựa trên URL và Tutorial ID)
+            # Check trùng URL để tránh tạo rác
             if url and url.strip() != "":
                 existing = self.db.fetchone(
                     "SELECT id FROM sub_contents WHERE tutorial_id = ? AND url = ?", 
                     (t_id, url)
                 )
-                if existing:
-                    print(f"ℹ️ URL nghiệp vụ đã tồn tại ID {existing['id']}: {url}")
-                    return existing['id'] 
+                if existing: return existing['id'] 
 
-            # 2. TÍNH TOÁN VỊ TRÍ (Position)
-            res = self.db.fetchone(
-                "SELECT MAX(position) as max_pos FROM sub_contents WHERE tutorial_id = ?", 
-                (t_id,)
-            )
+            res = self.db.fetchone("SELECT MAX(position) as max_pos FROM sub_contents WHERE tutorial_id = ?", (t_id,))
             next_pos = (res['max_pos'] + 1) if res and res['max_pos'] is not None else 0
 
-            # 3. CHUẨN HÓA METADATA (Ép kiểu về JSON string an toàn)
-            # Scanner mới trả về cấu trúc: {location, navigation, content, state}
-            if isinstance(metadata, (dict, list)):
-                meta_str = json.dumps(metadata, ensure_ascii=False)
-            else:
-                # Nếu metadata rỗng, tạo khung chuẩn để không lỗi khi parse sau này
-                meta_str = json.dumps({
-                    "location": {}, 
-                    "navigation": {"sidebar_menu": [], "tabs": []}, 
-                    "content": {"primary_actions": [], "form_fields": []},
-                    "state": {}
-                }, ensure_ascii=False)
+            # Khởi tạo Metadata
+            final_metadata = self._get_default_metadata()
+            if isinstance(metadata, dict):
+                final_metadata.update(metadata)
+            
+            meta_str = json.dumps(final_metadata, ensure_ascii=False)
 
-            # 4. INSERT DỮ LIỆU TẠM THỜI (Để lấy ID thực tế)
             query = """
                 INSERT INTO sub_contents (tutorial_id, sub_title, sub_folder, position, status, url, metadata)
                 VALUES (:t_id, :title, '', :pos, 'Chưa quay', :url, :meta)
             """
-            params = {
-                "t_id": t_id, 
-                "title": sub_title, 
-                "pos": next_pos, 
-                "url": str(url or ""), 
-                "meta": meta_str
-            }
-            cursor = self.db.execute(query, params)
+            cursor = self.db.execute(query, {
+                "t_id": t_id, "title": sub_title, "pos": next_pos, 
+                "url": str(url or ""), "meta": meta_str
+            })
             new_id = cursor.lastrowid
 
-            # 5. ĐỊNH DANH THƯ MỤC VẬT LÝ (Unique Folder Name)
-            # Format: [ID]_[Tiêu đề không dấu] (Ví dụ: 42_Thanh_toan_hoa_don)
+            # Tạo cấu trúc thư mục chuẩn cho Video Production
             safe_title = "".join([c if c.isalnum() else "_" for c in sub_title])
             unique_folder_name = f"{new_id}_{safe_title}"
-            
-            # Cập nhật ngược lại tên folder vào DB
-            self.db.execute(
-                "UPDATE sub_contents SET sub_folder = ? WHERE id = ?", 
-                (unique_folder_name, new_id)
-            )
+            self.db.execute("UPDATE sub_contents SET sub_folder = ? WHERE id = ?", (unique_folder_name, new_id))
 
-            # 6. TẠO CẤU TRÚC THƯ MỤC LƯU TRỮ TRÊN Ổ ĐĨA
-            # Đường dẫn: D:\ThanhVu\Storage\[Parent]\[Unique_Folder]
             full_sub_path = os.path.join(Config.BASE_STORAGE, parent_folder, unique_folder_name)
-            
-            os.makedirs(full_sub_path, exist_ok=True)
-            for sub_f in ["raw", "outputs", "assets"]:
-                # raw: chứa video quay từ Playwright
-                # assets: chứa file lồng tiếng (TTS), phụ đề, screenshot
-                # outputs: chứa video Final cho Tường Vân Apps
+            for sub_f in ["raw", "outputs", "assets", "metadata"]:
                 os.makedirs(os.path.join(full_sub_path, sub_f), exist_ok=True)
             
             self.db.commit()
-            print(f"✅ Đã thêm Sub-content ID {new_id}: {sub_title}")
             return new_id
-
         except Exception as e:
             print(f"❌ Lỗi add_sub_content: {e}")
             self.db.rollback()
             return False
-        
 
     def update_sub_content(self, sub_id: int, **kwargs):
         """
-        Cập nhật Sub-content thông minh:
-        - Tự động nhận diện Metadata (Dict/List/String).
-        - Chỉ cập nhật những trường được truyền vào (kwargs).
-        - Chống lỗi Double JSON Stringify.
+        Hàm vạn năng: Cập nhật thông tin cơ bản VÀ bồi đắp Metadata tri thức.
         """
         try:
-            # 1. Kiểm tra sự tồn tại của record
             current = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
-            if not current: 
-                print(f"⚠️ Không tìm thấy sub_id: {sub_id}")
-                return False
+            if not current: return False
 
-            # 2. XỬ LÝ METADATA (Trái tim của hàm)
-            # Chấp nhận cả 'metadata' hoặc 'new_metadata' cho linh hoạt
-            new_meta = kwargs.get('metadata') or kwargs.get('new_metadata')
-            final_meta = current['metadata']
+            # 1. Khôi phục Metadata hiện tại từ DB
+            try:
+                old_meta = json.loads(current['metadata']) if current['metadata'] else self._get_default_metadata()
+            except:
+                old_meta = self._get_default_metadata()
 
-            if new_meta is not None:
-                if isinstance(new_meta, (dict, list)):
-                    final_meta = json.dumps(new_meta, ensure_ascii=False)
-                elif isinstance(new_meta, str):
-                    try:
-                        # Kiểm tra xem chuỗi có phải JSON hợp lệ không
-                        json.loads(new_meta)
-                        final_meta = new_meta
-                    except ValueError:
-                        # Nếu là chuỗi thường (như ghi chú), bọc nó vào JSON
-                        final_meta = json.dumps(new_meta, ensure_ascii=False)
+            # 2. Xử lý Metadata mới từ VisionMachine (nếu có)
+            new_meta = kwargs.get('metadata')
+            if new_meta and isinstance(new_meta, dict):
+                # CẬP NHẬT TRỰC DIỆN: Ghi đè các nhánh tri thức mới nhất từ VisionMachine
+                # Navigation: URL, Breadcrumb...
+                if "navigation" in new_meta:
+                    old_meta["navigation"].update(new_meta["navigation"])
+                
+                # Layout: Các nút bấm, ô nhập liệu cào được
+                if "layout" in new_meta:
+                    # Nếu có active_form (vừa nội soi xong), ta ưu tiên giữ lại form đó
+                    old_meta["layout"].update(new_meta["layout"])
+                
+                # State: Trạng thái UI
+                if "state" in new_meta:
+                    old_meta["state"].update(new_meta["state"])
 
-            # 3. CHUẨN BỊ PARAMS (Ưu tiên giá trị mới, không có thì dùng cũ)
-            # Cách này giúp Vũ update lẻ tẻ từng trường mà không sợ mất data trường khác
+                old_meta['scanned_at'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                final_meta_str = json.dumps(old_meta, ensure_ascii=False)
+            else:
+                final_meta_str = current['metadata']
+
+            # 3. Quản lý Trạng thái (Status)
+            status = kwargs.get('status') or current['status']
+            # Nếu vừa nạp Metadata vào và status đang là 'Chưa quay' -> Chuyển thành 'Đã quét'
+            if new_meta and status == 'Chưa quay':
+                status = 'Đã quét'
+
+            # 4. Thực thi UPDATE
             params = {
                 "id": sub_id,
-                "title": kwargs.get('title') or kwargs.get('new_title') or current['sub_title'],
-                "status": kwargs.get('status') or kwargs.get('new_status') or current['status'],
-                "url": str(kwargs.get('url') or kwargs.get('new_url') or current['url'] or ""),
-                "meta": final_meta
+                "title": kwargs.get('title') or current['sub_title'],
+                "status": status,
+                "url": str(kwargs.get('url') or current['url'] or ""),
+                "meta": final_meta_str
             }
 
-            # Tự động chuyển trạng thái nếu vừa cập nhật Metadata mới từ Scanner
-            if new_meta and params['status'] == 'Chưa quay':
-                params['status'] = 'Đã quét' # Hoặc 'Sẵn sàng' tùy Vũ đặt
-
-            # 4. THỰC THI SQL
-            query = """
+            self.db.execute("""
                 UPDATE sub_contents 
-                SET sub_title = :title, 
-                    status = :status, 
-                    url = :url, 
-                    metadata = :meta 
+                SET sub_title = :title, status = :status, url = :url, metadata = :meta 
                 WHERE id = :id
-            """
-            self.db.execute(query, params)
-            self.db.commit()
+            """, params)
             
-            print(f"✅ Đã cập nhật Sub-content ID {sub_id}")
+            self.db.commit()
+            print(f"💾 [DB] Đã cập nhật tri thức cho SubID: {sub_id}")
             return True
 
         except Exception as e:
             print(f"❌ Lỗi update_sub_content: {e}")
-            self.db.rollback() # Luôn rollback nếu lỗi để an toàn DB
+            self.db.rollback()
             return False
 
     def get_sub_contents(self, tutorial_id):
-        """
-        Lấy danh sách trang con và chuẩn hóa Metadata từ scanner.js 2026.
-        Sắp xếp theo thứ tự nghiệp vụ (position) để AI hiểu luồng logic.
-        """
         try:
-            # 1. Truy vấn dữ liệu
-            query = "SELECT * FROM sub_contents WHERE tutorial_id = ? ORDER BY position ASC"
-            rows = self.db.fetchall(query, (tutorial_id,))
+            rows = self.db.fetchall("SELECT * FROM sub_contents WHERE tutorial_id = ? ORDER BY position ASC", (tutorial_id,))
             results = []
-            
             for row in rows:
                 item = dict(row)
-                item['url'] = str(item.get('url') or "")
-                
-                # 2. Parse JSON an toàn (Tránh crash nếu dữ liệu DB lỗi)
-                meta_raw = item.get('metadata')
-                meta = {}
-                if meta_raw:
-                    try:
-                        meta = json.loads(meta_raw) if isinstance(meta_raw, str) else meta_raw
-                    except:
-                        meta = {}
-                
-                # 3. Trích xuất các phân vùng dữ liệu chính theo Schema mới
+                try: meta = json.loads(item['metadata']) if item['metadata'] else {}
+                except: meta = {}
+
                 content = meta.get('content', {})
-                nav = meta.get('navigation', {})
                 state = meta.get('state', {})
-                
-                # 4. TÓM TẮT NỘI DUNG (Summary for AI/UI)
-                # Phần này giúp Vũ nhìn nhanh trên UI biết bài nào đã quét đủ dữ liệu
+                scroll = state.get('scroll_status', {})
+
                 item['summary'] = {
-                    "num_fields": len(content.get('form_fields', [])),
-                    # Tổng hợp tất cả các loại hành động có thể tương tác
-                    "num_actions": (
-                        len(content.get('primary_actions', [])) + 
-                        len(content.get('row_operations', []))
-                    ),
-                    "num_tabs": len(nav.get('tabs', [])),
-                    "table_columns": content.get('table_columns', []),
-                    "is_dialog": state.get('is_dialog_open', False) or state.get('has_overlay', False)
+                    "fields": len(content.get('form_fields', [])),
+                    "actions": len(content.get('primary_actions', [])) + len(content.get('row_operations', [])),
+                    "has_scroll": scroll.get('sidebar_can_scroll') or scroll.get('table_horizontal_scroll'),
+                    "is_dialog": state.get('is_dialog_open', False)
                 }
-
-                # 5. CHUẨN HÓA METADATA GỐC (Đảm bảo không bao giờ bị null)
-                # Nếu metadata rỗng, ta trả về khung chuẩn để các hàm khác không bị crash
-                if not meta or not meta.get('content'):
-                    item['metadata'] = {
-                        "location": {},
-                        "navigation": {"sidebar_menu": [], "tabs": []},
-                        "content": {"primary_actions": [], "row_operations": [], "form_fields": []},
-                        "state": {}
-                    }
-                else:
-                    item['metadata'] = meta
-                
+                item['metadata'] = meta
                 results.append(item)
-                
             return results
-
         except Exception as e:
-            print(f"❌ Lỗi get_sub_contents (Tutorial ID {tutorial_id}): {e}")
+            print(f"❌ Lỗi get_sub_contents: {e}")
             return []
 
-    def get_formatted_meta_for_ai(self, sub_id, mode="auto"):
+
+
+
+    # --- HÀM BIÊN KỊCH: TRÁI TIM CỦA HỆ THỐNG ---
+    def get_formatted_meta_for_ai(self, sub_id):
         """
-        Hàm đóng gói Full Prompt: Linh hoạt cho mọi Module và mọi loại Form.
-        mode="add": Ép làm kịch bản thêm mới.
-        mode="auto": Tự nhận diện dựa trên metadata.
+        [PHIÊN BẢN STUDIO CHUYÊN NGHIỆP - FIX LUỒNG NAVIGATION]
+        Hợp nhất: Metadata + Navigation Flow (Đăng nhập > Menu > Submenu) + Business Logic.
         """
         try:
-            sub = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
-            if not sub: return None
+            # 1. Lấy dữ liệu Content từ DB
+            row = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
+            if not row: return None
+            sub = dict(row)
+
+            # 2. Parse và làm sạch Metadata
+            raw_meta = json.loads(sub.get('metadata', '{}'))
+            clean_meta = self.clean_metadata_for_ai(raw_meta)
             
-            meta = json.loads(sub['metadata']) if isinstance(sub['metadata'], str) else (sub['metadata'] or {})
-            content = meta.get("content", {})
+            # 3. Chuẩn bị Luồng điều hướng (Navigation Path)
+            p_info = clean_meta['page_info']
+            # Kết hợp Đăng nhập + Sidebar Path để tạo thành chuỗi hành động
+            # Ví dụ: ["Đăng nhập", "Hệ thống", "Thông tin công ty", "Chi nhánh"]
+            full_navigation_flow = ["Đăng nhập thành công"] + p_info.get('sidebar_path', [])
             
-            # --- 1. LỌC FIELD THÔNG MINH ---
-            form_fields = [
-                f for f in content.get("form_fields", []) 
-                if f.get('selector') != "#_r_p_" and "tìm kiếm" not in f.get('label', '').lower()
-            ]
-
-            path_parts = [p.strip() for p in sub['sub_title'].split('|')]
-            execution_flow = [
-                {"step": 1, "action": "navigate", "target": "https://giaiphapvang.net/", "desc": "Mở hệ thống Giải Pháp Vàng"}
-            ]
-            current_step = 2
+            sidebar_desc = " > ".join(full_navigation_flow)
             
-            # --- 2. SIDEBAR (Linh hoạt mọi cấp độ) ---
-            for part in path_parts:
-                execution_flow.append({
-                    "step": current_step,
-                    "action": "click", 
-                    "target": f".MuiListItemButton-root:has-text('{part}')",
-                    "desc": f"Chọn {part}"
-                })
-                current_step += 1
+            input_labels = [i['label'] for i in clean_meta['form_to_fill']]
+            all_actions = clean_meta['available_actions']
+            action_labels = [a['label'] for a in all_actions]
+            if 'Lưu' not in action_labels: action_labels.append('Lưu')
 
-            # --- 3. HÀNH ĐỘNG MỞ FORM (Chỉ click nếu tìm thấy nút phù hợp) ---
-            primary_actions = content.get("primary_actions", [])
-            # Tìm nút 'Tạo mới' hoặc 'Thêm'
-            open_form_btn = next((b for b in primary_actions if any(kw in b.get('label', '') for kw in ["Tạo", "Thêm", "Mới", "Lập"])), None)
-            
-            if open_form_btn:
-                execution_flow.append({
-                    "step": current_step,
-                    "action": "click",
-                    "target": open_form_btn.get('selector'),
-                    "desc": f"Bấm {open_form_btn['label']} để mở form nhập liệu"
-                })
-                current_step += 1
+            # Nút mở form
+            primary_btn = next((a for a in all_actions if any(kw in a['label'].lower() for kw in ['tạo', 'thêm', 'mới'])), None)
+            p_btn_label = primary_btn['label'] if primary_btn else "Tạo mới"
 
-            # --- 4. ĐIỀN FORM (Chỉ thêm bước nếu có field) ---
-            if form_fields:
-                execution_flow.append({
-                    "step": current_step, "action": "fill_form", 
-                    "fields": form_fields, "desc": "Hoàn thiện các thông tin nghiệp vụ"
-                })
-                current_step += 1
-            
-            # --- 5. NÚT KẾT THÚC (Lưu/Xác nhận/In) ---
-            submit_btn = next((b for b in primary_actions if any(kw in b.get('label', '') for kw in ["Lưu", "Hoàn tất", "Xác nhận", "In"])), None)
-            execution_flow.append({
-                "step": current_step, "action": "click", 
-                "target": submit_btn.get('selector') if submit_btn else "button:has-text('Lưu')", 
-                "desc": f"Bấm {submit_btn['label'] if submit_btn else 'Lưu'} để kết thúc"
-            })
+            # Trạng thái UI
+            is_dialog = p_info.get('is_dialog_open', False)
 
-            # --- 6. ĐÓNG GÓI VỚI CHỈ THỊ NGỮ CẢNH ---
-            blueprint = {"flow": execution_flow, "form_details": form_fields}
-            
-            # Tự động định nghĩa ngành hàng dựa trên tiêu đề (Vàng/Cầm đồ/Kế toán)
-            title_l = sub['sub_title'].lower()
-            context = "quản lý tiệm vàng"
-            if "cầm đồ" in title_l: context = "nghiệp vụ cầm đồ"
-            elif "thuế" in title_l or "kế toán" in title_l: context = "kế toán tài chính"
+            # --- 4. SOẠN THẢO PROMPT "ĐẠO DIỄN VŨ" ---
+            prompt = f"""
+### 🎬 STUDIO PRODUCTION: {sub.get('sub_title')}
+**Slogan:** {sub.get('slogan', 'Giải Pháp Vàng - Quản lý thông minh')}
+**Mục tiêu Workflow:** {sub.get('workflow_custom', 'Hướng dẫn người dùng thao tác từ lúc đăng nhập')}
 
-            full_letter = f"""Mày là Chuyên gia Đào tạo {context} tại Giải Pháp Vàng.
-Hãy viết kịch bản video hướng dẫn: "{sub['sub_title']}".
+---
+### 📍 1. BỐI CẢNH & LỘ TRÌNH ĐIỀU HƯỚNG (PHẢI THEO ĐÚNG THỨ TỰ)
+Lộ trình thực tế để đến được màn hình này:
+**{sidebar_desc}**
 
---- 📦 DỮ LIỆU BLUEPRINT ---
-{json.dumps(blueprint, ensure_ascii=False, indent=2)}
+---
+### ✍️ 2. GHI CHÚ TỪ ĐẠO DIỄN VŨ
+> {sub.get('director_notes', 'Diễn đạt tự nhiên, tập trung vào sự tiện lợi.')}
+> **Lưu ý:** AI phải bắt đầu từ bước xác nhận Đăng nhập thành công, sau đó mới đi vào các menu.
 
---- 🛠 CHỈ THỊ ---
-1. NGÔN NGỮ: Dùng thuật ngữ {context} chuyên nghiệp.
-2. THÔNG TIN MẪU: Tự bịa dữ liệu mẫu phù hợp ngành vàng (VD: Vàng 610, Trọng lượng 1.234 chỉ...).
-3. KHÔNG TƯƠNG TÁC SEARCH: Bỏ qua '#_r_p_'.
-4. FORMAT: Trả về duy nhất 1 MẢNG JSON PHẲNG.
+---
+### 🔍 3. DANH SÁCH NHÃN KỸ THUẬT (KHỚP 100%)
+- **Luồng Menu:** {", ".join([f"'{l}'" for l in full_navigation_flow])}
+- **Input Form:** {", ".join([f"'{l}'" for l in input_labels])}
+- **Nút hành động:** {", ".join([f"'{l}'" for l in action_labels])}
+
+---
+### 📝 4. YÊU CẦU KỊCH BẢN (JSON ARRAY ONLY)
+Trả về một mảng JSON phẳng. Thực hiện theo 4 GIAI ĐOẠN:
+
+**GIAI ĐOẠN A: KHỞI ĐẦU**
+- Bước 1: Thông báo đăng nhập thành công và chào mừng (kèm slogan).
+
+**GIAI ĐOẠN B: ĐIỀU HƯỚNG SIDEBAR**
+- Dựa vào lộ trình: {sidebar_desc}.
+- Tạo các bước click tuần tự vào từng thẻ/menu con để mở đúng trang mục tiêu.
+
+**GIAI ĐOẠN C: MỞ FORM & NHẬP LIỆU**
+- Nếu trang chưa mở Form (is_dialog=False), phải có bước click '{p_btn_label}'.
+- Nhập liệu các trường: {", ".join(input_labels)} bằng dữ liệu mẫu ngành vàng thực tế.
+
+**GIAI ĐOẠN D: HOÀN TẤT**
+- Click 'Lưu' và đưa ra lời kết thân thiện.
+
+**Ví dụ:**
+[
+  {{"step": 1, "vo": "Chào mừng bạn đến với phần mềm Giải Pháp Vàng. Sau khi đăng nhập thành công, tại trang Home...", "action": "click", "target_label": "Hệ thống", "value": ""}},
+  {{"step": 2, "vo": "Bạn nhấn vào menu Thông tin công ty, sau đó chọn Chi nhánh.", "action": "click", "target_label": "Chi nhánh", "value": ""}}
+]
 """
-            return {"prompt_letter": full_letter}
+            return {
+                "prompt_letter": prompt, 
+                "clean_metadata": clean_meta,
+                "sub_data": sub 
+            }
+
         except Exception as e:
+            print(f"❌ Lỗi get_formatted_meta_for_ai: {e}")
+            import traceback
+            traceback.print_exc()
             return None
         
-    def update_sub_content_metadata(self, sub_id, metadata):
-        """Cập nhật metadata (nhận vào dict/list)"""
-        return self.update_sub_content(sub_id, new_metadata=metadata)
 
+    def _format_form_for_ai(self, form_data):
+        """Định dạng danh sách Form để AI dễ đọc"""
+        if not isinstance(form_data, list):
+            return "  - Không có form đang mở hoặc không phát hiện ô nhập liệu."
+        
+        lines = []
+        for f in form_data:
+            req = "[Bắt buộc]" if f.get('required') else ""
+            lines.append(f"  - {f['label']} (Loại: {f['type']}) {req}")
+        return "\n".join(lines) if lines else "  - Không có form đang mở."
+
+    
+
+    # --- HÀM QUAN TRỌNG: LÀM SẠCH DỮ LIỆU ĐỂ "MỚM" CHO AI ---
+    def clean_metadata_for_ai(self, raw_data):
+        """
+        Gọt sạch tọa độ, chỉ để lại nhãn (labels) và LỘ TRÌNH LUỒNG (Navigation Flow).
+        """
+        if not raw_data: return self._get_default_metadata()
+
+        # 1. Bóc tách lộ trình
+        nav = raw_data.get("navigation", {})
+        sidebar_path = nav.get("breadcrumbs") or nav.get("hierarchy") or []
+
+        # 2. Bóc tách các nút bấm (Actions)
+        layout = raw_data.get("layout", {})
+        active_form = raw_data.get("active_form") or {}
+        
+        # Nếu có form, ưu tiên lấy actions của form trước
+        raw_actions = layout.get("actions", [])
+        if active_form:
+            raw_actions = active_form.get("actions", []) + raw_actions
+
+        # Lọc trùng label để AI không bị loạn
+        seen_labels = set()
+        clean_actions = []
+        for a in raw_actions:
+            lbl = a.get("label")
+            if lbl and lbl not in seen_labels:
+                clean_actions.append({
+                    "label": lbl, 
+                    "is_primary": a.get("is_primary", False)
+                })
+                seen_labels.add(lbl)
+
+        # 3. Bóc tách ô nhập liệu (Ưu tiên Form nếu đang mở)
+        raw_inputs = active_form.get("inputs", []) if active_form else layout.get("inputs", [])
+        clean_inputs = [
+            {"label": i.get("label"), "type": i.get("type", "text"), "required": i.get("required", False)}
+            for i in raw_inputs if i.get("label")
+        ]
+
+        # 4. Kiểm tra trạng thái bảng
+        tables = layout.get("tables", [])
+        has_data = False
+        if tables and isinstance(tables, list):
+            has_data = tables[0].get("count", 0) > 0
+
+        return {
+            "page_info": {
+                "url": raw_data.get("url"),
+                "is_dialog_open": raw_data.get("state", {}).get("is_dialog_open", False) or bool(active_form),
+                "sidebar_path": sidebar_path
+            },
+            "available_actions": clean_actions,
+            "form_to_fill": clean_inputs,
+            "table_structure": {
+                "has_data": has_data
+            }
+        }
+    
     def delete_sub_content(self, sub_id, folder_name, sub_folder):
         try:
             self.db.execute("DELETE FROM sub_contents WHERE id = ?", (sub_id,))
@@ -365,3 +389,6 @@ Hãy viết kịch bản video hướng dẫn: "{sub['sub_title']}".
         except Exception as e:
             print(f"❌ Lỗi delete_sub_content: {e}")
             return False
+
+    def update_sub_content_metadata(self, sub_id, metadata):
+        return self.update_sub_content(sub_id, metadata=metadata)

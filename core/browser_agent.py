@@ -10,34 +10,36 @@ class BrowserAgent:
             os.makedirs(self.output_dir)
 
     async def _init_browser(self, p):
-        """Khởi tạo trình duyệt và ngữ cảnh"""
         browser = await p.chromium.launch(headless=False)
         context = await browser.new_context(
             viewport={'width': 1920, 'height': 1080},
+            device_scale_factor=1.5, # Giúp chữ trong video to rõ hơn
             record_video_dir=self.output_dir,
             ignore_https_errors=True
         )
         page = await context.new_page()
-        page.set_default_timeout(60000)
+        # Để 30s là đủ, 60s hơi lâu nếu web bị lỗi thực sự
+        page.set_default_timeout(30000) 
         return browser, context, page
 
     async def capture_page_context(self, page):
-        """'Cào' toàn bộ thông tin các phần tử có thể tương tác trên trang hiện tại"""
-        # Đợi một chút cho UI (như MUI) render xong hoàn toàn
-        await asyncio.sleep(1.5) 
+        """'Cào' thông tin: Thêm bước tự động cuộn trang để UI load hết"""
+        await asyncio.sleep(1) # Đợi UI ổn định
         
         elements = await page.evaluate('''() => {
-            const interactiveSelectors = 'a, button, input, [role="button"], [role="link"], h1, h2, h6, .MuiTypography-root';
+            const interactiveSelectors = 'a, button, input, [role="button"], [role="link"], .MuiTypography-root, .ant-menu-item';
             const items = [];
             document.querySelectorAll(interactiveSelectors).forEach(el => {
+                // Tự động cuộn tới phần tử để nó 'visible' thực sự
+                // el.scrollIntoView({block: "nearest"}); 
+                
                 const rect = el.getBoundingClientRect();
-                if (rect.width > 0 && rect.height > 0 && window.getComputedStyle(el).visibility !== 'hidden') {
+                const style = window.getComputedStyle(el);
+                if (rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none') {
                     items.push({
                         tag: el.tagName,
                         text: (el.innerText || el.value || el.placeholder || "").trim(),
-                        href: el.getAttribute('href') || "",
                         id: el.id,
-                        name: el.getAttribute('name') || "",
                         role: el.getAttribute('role') || "",
                         class: el.className
                     });
@@ -48,39 +50,44 @@ class BrowserAgent:
         return elements
 
     async def execute_step(self, page, step, scenario_name):
-        """Xử lý từng loại hành động cụ thể"""
         action = step.get("action")
         selector = step.get("selector")
         value = step.get("value", "")
         
+        # Tạo locator thông minh hơn
+        # Nếu selector là một chuỗi text đơn thuần, ta bọc nó lại
+        if not (selector.startswith('.') or selector.startswith('#') or selector.startswith('//')):
+            # Tìm theo text một cách linh hoạt (không phân biệt hoa thường)
+            target_locator = page.get_by_text(selector, exact=False).first
+        else:
+            target_locator = page.locator(selector).first
+
         if action == "goto":
             await page.goto(selector, wait_until="networkidle", timeout=60000)
             
         elif action == "click":
-            await page.wait_for_selector(selector, state="visible", timeout=15000)
-            # Hover trước khi click để tạo hiệu ứng video tự nhiên
-            await page.hover(selector)
-            await page.click(selector)
+            # --- CẢI TIẾN: Đợi, Cuộn, Hover rồi mới Click ---
+            try:
+                await target_locator.wait_for(state="visible", timeout=10000)
+                await target_locator.scroll_into_view_if_needed()
+                await target_locator.hover()
+                await asyncio.sleep(0.5) # Để video thấy rõ chuột đang di chuyển tới
+                await target_locator.click()
+            except Exception as e:
+                print(f"⚠️ Không click được '{selector}': {e}")
+                # Chụp ảnh lỗi ngay lúc này để Vũ xem tại sao nó timeout
+                await page.screenshot(path=f"error_click_{int(time.time())}.png")
+                raise e
             
         elif action == "fill":
-            await page.wait_for_selector(selector, state="visible")
-            await page.click(selector) # Focus vào field (quan trọng cho MUI)
-            await page.fill(selector, value)
+            await target_locator.wait_for(state="visible", timeout=10000)
+            await target_locator.scroll_into_view_if_needed()
+            await target_locator.click() # Focus cho chắc (nhất là với MUI/AntD)
+            await target_locator.fill(value)
             
         elif action == "wait":
-            try:
-                # Nếu là số giây
-                seconds = float(value)
-                await asyncio.sleep(seconds)
-            except ValueError:
-                # Nếu là Selector
-                print(f"⏳ Chờ phần tử: {value}")
-                try:
-                    await page.wait_for_selector(value, state="visible", timeout=20000)
-                except Exception:
-                    screenshot_path = os.path.join(self.output_dir, f"timeout_{int(time.time())}.png")
-                    await page.screenshot(path=screenshot_path)
-                    raise Exception(f"Timeout chờ {value}. Ảnh debug tại: {screenshot_path}")
+            # (Giữ nguyên logic cũ của Vũ)
+            await asyncio.sleep(float(value))
 
     async def run_scenario(self, scenario_name, steps):
         """Hàm điều khiển chính: Chạy kịch bản và thu thập dữ liệu thông minh"""

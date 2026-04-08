@@ -93,3 +93,55 @@ Chốt lại: Con Bot của mày sẽ đi theo nguyên tắc "Thấy cửa là m
 Mày thấy bản "Tổng mục lục vét cạn" này đã đủ đô để mày nâng cấp hàm update_module_details chưa? Cần tao viết mẫu logic quét cho cái Combobox hay Bảng con không?
 
 """
+
+"""
+Chút quay lại: 
+Dưới đây là sơ đồ kiến trúc và vị trí các con Bot trong từng file để ông quản lý, không để sót bất kỳ ngóc ngách nào của hệ thống "Giải Pháp Vàng Studio".🏛️ CẤU TRÚC HỆ THỐNG "STUDIO_BOT"Tên BotVị trí FileNhiệm vụ chínhMetadata quan trọng cần lưu DB🕵️ Trinh Sát (Scout)vision_machine.py + scanner.jsĐi "nội soi" toàn bộ trang, tự bấm nút Thêm/Sửa để lấy Form ẩn.layout, active_form, sample_data, position_desc, screenshot_path.✍️ Biên Kịch (Writer)script_agent.py (File mới)Đọc Metadata từ DB -> Gửi Prompt cho Gemini/GPT -> Xuất kịch bản steps.target_label, action, value, speech_text (lời thoại lồng tiếng).🎭 Diễn Viên (Actor)studio_machine.pyCầm steps, gọi Actor View để lấy tọa độ thực tế và thực thi hành động.execution_status, log_coordinates.🎬 Biên Tập (Editor)effect_machine.py (File mới)Vẽ hiệu ứng chuột (Ripple), Highlight vùng đang nói, ghép tiếng (TTS).video_frame, audio_sync_mark.🔍 DANH SÁCH KIỂM TRA (CHECKLIST) CHO CON TRINH SÁTTrước khi đẩy vào DB, ông hãy chạy debug và kiểm tra xem biến metadata trả về từ vision_machine.py đã có đủ 5 "long mạch" này chưa:position_desc (Định hướng không gian):Kiểm tra: Nút "Lưu" có ghi là "phía dưới bên phải màn hình" không?Mục đích: Để con Biên Kịch viết lời thoại: "Bạn nhìn xuống góc phải...".sample_data (Dữ liệu thực tế):Kiểm tra: Trong bảng vàng, nó có lấy được chuỗi kiểu "Vàng 610 | 5.400.000 | ..." không?Mục đích: Để video demo không bị "ảo", dùng đúng dữ liệu thật của tiệm.active_form (Nội soi Form ẩn):Kiểm tra: Khi bấm "Thêm mới", nó có quét được các inputs bên trong cái Pop-up (Dialog) không?Mục đích: Đây là mấu chốt để hướng dẫn người dùng nhập liệu.bg_color_hex (Màu sắc nhận diện):Kiểm tra: Có lấy được mã màu CSS (hoặc RGB) của các nút quan trọng không?Mục đích: Để con Biên Tập vẽ hiệu ứng loang nước (Ripple) đúng màu thương hiệu của tiệm vàng.active_alerts (Bắt lỗi hệ thống):Kiểm tra: Nếu bấm nút mà hiện thông báo đỏ "Vui lòng nhập tên", con Trinh Sát có chộp được text đó không?🛠️ LƯU TRỮ VÀO DATABASE (Gợi ý cấu trúc Table)Ông nên có một bảng ui_metadata để lưu lại mỗi lần con Trinh Sát đi thám thính về:SQLCREATE TABLE ui_metadata (
+    id SERIAL PRIMARY KEY,
+    page_url TEXT,
+    page_title TEXT,
+    full_json_metadata JSONB, -- Lưu toàn bộ kết quả từ VisionMachine
+    screenshot_path TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+💡 LỜI KHUYÊN CHO BƯỚC TIẾP THEOKhi ông tạo file cho Bot Biên Kịch (script_agent.py), ông đừng bắt nó đọc toàn bộ cái JSON khổng lồ. Hãy viết một hàm lọc trong Python để chỉ trích xuất những thứ cần thiết (ví dụ: chỉ lấy danh sách các nút và các ô nhập liệu) rồi mới gửi cho AI. Điều này giúp:Tiết kiệm Token (Rẻ tiền hơn).AI không bị rối (Viết kịch bản chính xác hơn).
+"""
+
+
+'''
+Tao nghĩ kịch bản thiếu bước, nó cần có cơ chế kiểm duyệt lại đang ở trang nào, kiểm tra trang đó có nội dung và nút hay menu cha con gì không, click vào các nút (lúc này tạm dừng quay), khi nào tìm thấy yêu cầu thì quay tiếp mới đúng, có thể nhảy vào trang đó reset các menu như mới rồi mới click tìm chứ ta
+'''
+
+"""
+'Bot sẽ đi theo sơ đồ: Module -> Sidebar -> Menu Cha -> Menu Con -> Giao diện Form (Nút/Table/Scroll)'
+🔄 QUY TRÌNH "NỘI SOI" TỪNG BƯỚC (STEP-BY-STEP)
+Để không thiếu sót, Bot sẽ chạy theo thuật toán Đệ quy chiều sâu (DFS):
+
+BƯỚC 1 - SIDEBAR: * Vào Module -> Tìm Sidebar.
+
+Duyệt Menu Cha 1 -> Click bung -> Lấy danh sách Menu Con (1.1, 1.2...).
+
+Duyệt Menu Cha 2... tương tự.
+
+BƯỚC 2 - TRUY CẬP TRANG CON:
+
+Điều hướng đến Menu Con 1.1.
+
+Lệnh Cuộn (Scroll): Thực hiện cuộn trang 2 lần (Giữa và Cuối) để "kích hoạt" toàn bộ nút ẩn.
+
+BƯỚC 3 - BÓC TÁCH PHẦN TỬ:
+
+Quét vùng Header trang (Nút: Thêm mới, Xuất Excel, Tìm kiếm).
+
+Quét vùng Body (Table: Các cột dữ liệu là gì? Có nút "Sửa/Xóa" ở mỗi dòng không?).
+
+Quét vùng Footer (Phân trang: Tổng số dòng, Số trang).
+
+BƯỚC 4 - LƯU TRỮ (EXCEL STRUCTURE):
+
+Mỗi Module = 1 Thư mục.
+
+Mỗi Trang con = 1 File JSON/Excel.
+
+Bên trong File: Chia rõ 3 Tab: Hành động, Nhập liệu, Cấu trúc bảng.
+"""

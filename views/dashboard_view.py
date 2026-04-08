@@ -68,13 +68,13 @@ def render_dashboard(ctrl):
     db_projects = [dict(p) for p in ctrl.get_all_tutorials()]
     db_titles = [p['title'] for p in db_projects]
     
-    GPV_NAME = "Giải Pháp Vàng"
+    GPV_NAME = "Ứng Dụng Vàng"
     NEW_PROJ_PLACEHOLDER = "➕ Khởi tạo dự án mới..."
     
     # Xây dựng danh sách options cho selectbox
     display_options = ["-- Chọn dự án --"] + db_titles
     
-    # Thêm option "mồi" cho Giải Pháp Vàng nếu trong DB chưa có
+    # Thêm option "mồi" cho Ứng Dụng Vàng nếu trong DB chưa có
     if GPV_NAME not in db_titles:
         display_options.append(GPV_NAME)
     
@@ -125,15 +125,15 @@ def render_dashboard(ctrl):
         st.warning(f"⚠️ Dự án '{GPV_NAME}' chưa được khởi tạo trong Database.")
         if st.button(f"🚀 KÍCH HOẠT DỰ ÁN {GPV_NAME.upper()}", type="primary", use_container_width=True):
             if ctrl.create_tutorial(GPV_NAME):
-                st.success("Khởi tạo Giải Pháp Vàng thành công!")
+                st.success("Khởi tạo Ứng Dụng Vàng thành công!")
                 st.session_state.selected_project_title = GPV_NAME
                 st.rerun()
         return
 
 
     if p:
-        # Kiểm tra nếu là dự án Giải Pháp Vàng
-        is_gpv = any(kw in p['title'].lower() for kw in ["giải pháp vàng", "giaiphapvang", "gpv", "giải pháp"])
+        # Kiểm tra nếu là dự án Ứng Dụng Vàng
+        is_gpv = any(kw in p['title'].lower() for kw in ["ứng dụng vàng", "ungdungvang", "udv", "ứng dụng"])
         
         if is_gpv:
             # Đảm bảo truyền ai_script vào để đồng bộ logic AI bên trong GPV

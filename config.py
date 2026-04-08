@@ -1,83 +1,98 @@
 import os
 import re
 import unicodedata
+from pathlib import Path
+import datetime
 
 class Config:
-    # --- THÔNG TIN HỆ THỐNG TARGET ---
+    # ==========================================
+    # 1. THÔNG TIN HỆ THỐNG
+    # ==========================================
     TARGET_DOMAIN = "https://giaiphapvang.net"
-    APP_NAME = "Giải Pháp Vàng"
-    
-    # --- CẤU HÌNH MARKETING & BRANDING ---
-    DEFAULT_SLOGAN = "Ứng dụng vàng, giải pháp toàn diện cho ngành kim hoàn"
-    
-    # --- CẤU HÌNH AI & NGHIỆP VỤ ---
-    # Để trống để người dùng tự nhập biến tấu cho từng bài
-    DEFAULT_AI_NOTES = "" 
-
-    AI_SCENARIOS = [
-        {"id": "ADD", "label": "Hướng dẫn Thêm mới", "icon": "➕"},
-        {"id": "EDIT", "label": "Chỉnh sửa thông tin", "icon": "📝"},
-        {"id": "DEL", "label": "Xóa/Hủy dữ liệu", "icon": "🗑️"},
-        {"id": "SEARCH", "label": "Tra cứu & Bộ lọc", "icon": "🔍"},
-        {"id": "REPORT", "label": "Xuất báo cáo", "icon": "📊"},
-        {"id": "FLOW", "label": "Kết nối quy trình", "icon": "🔗"}
-    ]
-
-    ACTION_MAP = {
-    "ADD": ["Thêm mới", "Tạo mới", "Thêm"],
-    "EDIT": ["Sửa", "Cập nhật", "Edit"],
-    "DEL": ["Xóa", "Hủy", "Delete"]
-}
-
-    # --- ĐƯỜNG DẪN LƯU TRỮ (Paths) ---
-    BASE_STORAGE = os.path.abspath("./storage")
-    SCRIPTS_DIR_NAME = "scripts"
-    RAW_DIR_NAME = "raw"
-    DB_PATH = os.path.abspath("database.db")
-    
-    # File Cache chứa kịch bản AI đã soạn
-    AI_CACHE_PATH = os.path.join(BASE_STORAGE, "ai_scripts_cache.json")
-
-    @staticmethod
-    def slugify_vietnamese(text):
-        """Chuyển 'Hệ thống' thành 'He_thong' để đặt tên file an toàn"""
-        if not text: return "unknown"
-        # 1. Tách dấu ra khỏi chữ cái
-        text = unicodedata.normalize('NFD', text)
-        # 2. Loại bỏ các ký tự dấu
-        text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
-        # 3. Thay đ bằng d
-        text = text.replace('đ', 'd').replace('Đ', 'D')
-        # 4. Chuyển sang chữ thường, thay khoảng trắng và ký tự lạ bằng gạch dưới
-        text = text.lower().strip()
-        text = re.sub(r'[^a-z0-9\s-]', '', text)
-        text = re.sub(r'[\s-]+', '_', text)
-        return text
+    APP_NAME = "Ứng Dụng Vàng"
+    APP_SLUG = 'ung_dung_vang'
 
     @classmethod
-    def get_knowledge_path(cls, project_name, module_name, form_name):
+    def get_current_time(cls):
+        """Trả về chuỗi thời gian hiện tại theo định dạng VN"""
+        return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # ==========================================
+    # 2. ĐƯỜNG DẪN HỆ THỐNG (PATHS)
+    # ==========================================
+    ROOT_DIR = Path(__file__).parent.absolute()
+    BASE_STORAGE = ROOT_DIR / "storage"
+    DB_PATH = ROOT_DIR / "database.db"
+    AI_CACHE_PATH = BASE_STORAGE / "ai_scripts_cache.json"
+
+    @classmethod
+    def get_javascript_path(cls, filename):
+        """Trả về đối tượng Path để Engine có thể dùng .exists() và .read_text()"""
+        return cls.ROOT_DIR / "Bot_GPV" / "js" / filename
+
+    @classmethod
+    def get_javascript(cls, filename):
+        """Alias cho get_javascript_path để tương thích code cũ"""
+        return cls.get_javascript_path(filename)
+
+    # ==========================================
+    # 3. CÔNG CỤ CHUẨN HÓA (UTILITIES)
+    # ==========================================
+    @staticmethod
+    def slugify(text, max_length=40): # Tăng lên 40 để tên module không bị cụt
+        if not text: return "unknown"
+        
+        # 1. Tách ID ở đầu (Ví dụ: "49 | Ngân hàng" -> ID="49", Text="Ngân hàng")
+        prefix_id = ""
+        # Regex tìm số ở đầu, theo sau là các ký tự ngăn cách như |, _, -, hoặc khoảng trắng
+        id_match = re.match(r'^(\d+)[_\s|.-]*(.*)', text.strip())
+        
+        if id_match:
+            prefix_id = id_match.group(1) + "_"
+            text = id_match.group(2)
+
+        # 2. Chuẩn hóa tiếng Việt (Bỏ dấu)
+        text = unicodedata.normalize('NFD', text)
+        text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
+        text = text.replace('đ', 'd').replace('Đ', 'D')
+        
+        # 3. Làm sạch chữ: bỏ ký tự đặc biệt, thay khoảng trắng bằng gạch dưới
+        text = re.sub(r'[^a-zA-Z0-9\s-]', '', text)
+        text = re.sub(r'[\s-]+', '_', text.lower()).strip('_')
+        
+        # 4. Cắt ngắn tên chữ (không tính ID) để folder gọn
+        clean_text = text[:max_length].rstrip('_')
+        
+        return f"{prefix_id}{clean_text}"
+
+    @classmethod
+    def get_path(cls, *args, **kwargs):
         """
-        Tạo đường dẫn: storage/Giai_Phap_Vang/he_thong_chi_nhanh.json
+        Tạo folder phân cấp: storage/ung_dung_vang/cap_1/cap_2/assets
+        Truyền vào: Config.get_path("49 | Hệ thống | Ngân hàng", asset_type="assets")
         """
-        # Chuẩn hóa tên thư mục dự án (Ví dụ: Giai_Phap_Vang)
-        proj_folder = project_name.replace(" ", "_")
-        
-        # Chuẩn hóa tên file sạch dấu (Ví dụ: he_thong_chi_nhanh.json)
-        clean_mod = cls.slugify_vietnamese(module_name)
-        clean_form = cls.slugify_vietnamese(form_name)
-        file_name = f"{clean_mod}_{clean_form}.json"
-        
-        full_folder_path = os.path.join(cls.BASE_STORAGE, proj_folder)
-        
-        if not os.path.exists(full_folder_path):
-            os.makedirs(full_folder_path, exist_ok=True)
+        target_path = cls.BASE_STORAGE / cls.APP_SLUG
+        asset_type = kwargs.get('asset_type')
+
+        if args and args[0]:
+            # Tách chuỗi theo dấu | để tạo folder lồng nhau
+            full_str = str(args[0])
+            parts = [p.strip() for p in full_str.split('|') if p.strip()]
             
-        return os.path.join(full_folder_path, file_name)
+            for part in parts:
+                target_path = target_path / cls.slugify(part)
+        
+        # Thêm folder con cuối cùng nếu có (ví dụ: assets, logs)
+        if asset_type:
+            target_path = target_path / asset_type
+            
+        target_path.mkdir(parents=True, exist_ok=True)
+        return target_path
 
     @classmethod
     def init_folders(cls):
-        if not os.path.exists(cls.BASE_STORAGE):
-            os.makedirs(cls.BASE_STORAGE, exist_ok=True)
+        cls.BASE_STORAGE.mkdir(parents=True, exist_ok=True)
+        print(f"📂 Hệ thống lưu trữ sẵn sàng tại: {cls.BASE_STORAGE}")
 
-# Khởi tạo
+# Tự động khởi tạo folder gốc khi load Config
 Config.init_folders()

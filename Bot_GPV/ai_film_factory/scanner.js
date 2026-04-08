@@ -8,6 +8,23 @@ window.scanPage = async () => {
     const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     const isActorMode = window.isBotActing === true; // Set từ Python
 
+    // --- [THÊM MỚI]: CHỐT CHẶN KIÊN NHẪN (Fix lỗi Timeout) ---
+    const waitForDashboard = async (selector, timeout = 10000) => {
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+            if (document.querySelector(selector)) return true;
+            await sleep(500);
+        }
+        return false;
+    };
+
+    // Tự động đợi Grid hoặc Menu xuất hiện trước khi bắt đầu quét
+    const isReady = await waitForDashboard('.MuiGrid-item, .MuiDataGrid-root, .MuiListItem-root');
+    if (!isReady) {
+        console.warn("⚠️ Dashboard load quá chậm, Bot sẽ quét những gì đang có.");
+    }
+    
+
     const utils = {
         getCleanText: (el) => {
             if (!el) return "";
@@ -47,50 +64,99 @@ window.scanPage = async () => {
                 if (inner.includes('print')) return "In ấn";
             }
             return label || "Nút chức năng";
+        },
+        // Vị trí thêm: Cuối khối utils
+        getRelativePos: (el) => {
+            const r = el.getBoundingClientRect();
+            const vh = window.innerHeight;
+            const vw = window.innerWidth;
+            const yPos = r.top < vh / 3 ? "phía trên" : (r.top > (vh * 2) / 3 ? "phía dưới" : "giữa");
+            const xPos = r.left < vw / 3 ? "bên trái" : (r.left > (vw * 2) / 3 ? "bên phải" : "chính giữa");
+            return `${yPos} ${xPos} màn hình`;
         }
     };
 
     // --- GIAI ĐOẠN 1 & 2: VÉT LÕI (GRID & GLOBAL) ---
+
+    // --- CÔNG CỤ PHÂN LOẠI THÔNG MINH ---
+    const isInsideForm = (el) => {
+        return !!el.closest('.MuiDialog-root, .MuiDrawer-root, [role="dialog"], form, .modal-content');
+    };
     const internalScan = (container) => {
         const data = { actions: [], inputs: [], tables: [], scrollers: [] };
 
         // Quét nút & Cột chức năng
+        // Quét nút & Cột chức năng
         container.querySelectorAll('button, a, [role="button"]').forEach(btn => {
             const vis = utils.getVisuals(btn);
             if (!vis.is_visible) return;
+            
             const item = {
                 label: utils.getSmartLabel(btn),
                 selector: utils.getSelector(btn),
                 rect: vis,
-                _el: btn // Giữ lại để click nội bộ
+                position_desc: utils.getRelativePos(btn),
+                bg_color_hex: vis.bg_color,
+                _el: btn 
             };
-            if (btn.closest('tr, .MuiDataGrid-row')) data.tables.push({ type: 'row_op', ...item });
-            else data.actions.push(item);
+
+            // LOGIC PHÂN LOẠI MỚI:
+            if (btn.closest('tr, .MuiDataGrid-row')) {
+                data.tables.push({ type: 'row_op', ...item });
+            } else if (isInsideForm(btn)) {
+                // Nếu nút nằm trong Form/Dialog -> Đánh dấu là Form Action
+                item.context = "form_action";
+                data.actions.push(item); 
+            } else {
+                // Nút nằm ngoài (Toolbar, Header...)
+                item.context = "global_action";
+                data.actions.push(item);
+            }
         });
 
         // Quét Bảng & Thanh cuộn kép (Giai đoạn 2)
         container.querySelectorAll('table, .MuiDataGrid-root').forEach(t => {
             const scrollEl = t.querySelector('.MuiDataGrid-virtualScroller') || t;
             const cols = Array.from(t.querySelectorAll('th, .MuiDataGrid-columnHeaderTitle')).map(utils.getCleanText).filter(v => v);
+            
+            // Lấy thêm 2 dòng dữ liệu đầu tiên để AI biết bảng đang có gì
+            const sampleRows = Array.from(t.querySelectorAll('tr, .MuiDataGrid-row'))
+                .slice(1, 3) // Bỏ header, lấy 2 dòng
+                .map(row => Array.from(row.querySelectorAll('td, [role="cell"]'))
+                    .slice(0, 4) // Lấy 4 cột đầu cho đỡ dài metadata
+                    .map(utils.getCleanText).join(" | ")
+                );
+
             data.tables.push({
                 columns: cols,
+                sample_data: sampleRows, // Thêm dòng này
                 count: cols.length,
-                needs_h_scroll: scrollEl.scrollWidth > scrollEl.clientWidth, // Bảng rộng quá màn hình
-                rect: utils.getVisuals(t)
+                needs_h_scroll: scrollEl.scrollWidth > scrollEl.clientWidth,
+                rect: utils.getVisuals(t),
+                position_desc: utils.getRelativePos(t) // Thêm dòng này
             });
         });
 
         // Quét Input & Combobox (Giai đoạn 3)
-        container.querySelectorAll('.MuiFormControl-root, .form-group').forEach(f => {
-            const input = f.querySelector('input, textarea, [role="combobox"], select');
-            if (!input) return;
-            data.inputs.push({
+        container.querySelectorAll('.MuiFormControl-root, .form-group, input, textarea, select').forEach(f => {
+            // Nếu phần tử là input/textarea/select nhưng nó đã nằm trong một cái Group đã được quét rồi thì bỏ qua
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(f.tagName) && f.closest('.MuiFormControl-root, .form-group')) return;
+            
+    const input = f.tagName === 'INPUT' || f.tagName === 'TEXTAREA' || f.tagName === 'SELECT' ? f : f.querySelector('input, textarea, [role="combobox"], select');if (!input) return;
+            
+            const inputItem = {
                 label: utils.getCleanText(f.querySelector('label') || f),
                 selector: utils.getSelector(input),
                 type: input.getAttribute('role') === 'combobox' ? 'combobox_linked' : input.type,
                 required: !!f.querySelector('.Mui-required'),
-                rect: utils.getVisuals(input)
-            });
+                placeholder: input.placeholder || "",
+                current_value: input.value || "",
+                rect: utils.getVisuals(input),
+                // PHÂN LOẠI Ở ĐÂY:
+                is_in_form: isInsideForm(input)
+            };
+            
+            data.inputs.push(inputItem);
         });
 
         return data;
@@ -105,6 +171,11 @@ window.scanPage = async () => {
             const dialog = document.querySelector('.MuiDialog-root, .MuiDrawer-root, [role="dialog"], .modal-content');
             if (dialog) {
                 const formMetadata = internalScan(dialog);
+                // Thêm: Kiểm tra xem có thông báo lỗi hoặc chú ý nào đang hiện không
+                const alertText = dialog.querySelector('.MuiAlert-message, .Mui-error, [class*="error"]') ? 
+                                utils.getCleanText(dialog.querySelector('.MuiAlert-message, .Mui-error, [class*="error"]')) : "";
+                formMetadata.active_alerts = alertText;
+
                 // Reset UI: Tìm nút Đóng/Hủy
                 const closeBtn = Array.from(dialog.querySelectorAll('button')).find(b => /đóng|hủy|close|x/i.test(utils.getSmartLabel(b).toLowerCase()));
                 if (closeBtn) { closeBtn.click(); await sleep(600); }
@@ -137,9 +208,31 @@ window.scanPage = async () => {
 
     // Logic Trinh sát tự động (Chỉ chạy khi Scout Mode)
     if (!isActorMode && !activeOverlay) {
-        const target = scanResult.actions.find(a => /thêm|tạo/i.test(a.label.toLowerCase())) || scanResult.tables.find(t => t.type === 'row_op');
+        // 1. Lấy danh sách menu sidebar
+        const sidebarItems = Array.from(document.querySelectorAll('.MuiListItem-root'));
+        
+        // 2. Tìm mục "Thông tin công ty" (hoặc mục đầu tiên nếu muốn đi từ trên xuống)
+        // Vũ có thể đổi 'thông tin công ty' thành mục tiêu cụ thể
+        const firstMenu = sidebarItems.find(el => 
+            /thông tin công ty|hệ thống/i.test(utils.getCleanText(el).toLowerCase())
+        );
+
+        // 3. KIỂM TRA: Nếu đang ở sai chỗ, thì Click Sidebar trước
+        const currentTitle = document.title.toLowerCase();
+        if (firstMenu && !currentTitle.includes("thông tin công ty")) {
+            console.log("🚀 Chuyển hướng về menu ưu tiên: ", utils.getCleanText(firstMenu));
+            firstMenu.click();
+            await sleep(2000); // Đợi trang load
+            // Sau khi click menu, ta return metadata hiện tại để Python biết là đang chuyển trang
+            return metadata; 
+        }
+
+        // 4. Nếu đã ở đúng trang hoặc không cần chuyển menu, thì mới 'nội soi' Form
+        const target = scanResult.actions.find(a => /thêm|tạo|nhập|xuất|mới/i.test(a.label.toLowerCase())) 
+               || scanResult.tables.find(t => t.type === 'row_op');
+        
         if (target) {
-            console.log("🕵️ Trinh sát đang nội soi...");
+            console.log("🕵️ Đã ở đúng trang, đang nội soi Form...");
             metadata.active_form = await deepScan(target);
         }
     }

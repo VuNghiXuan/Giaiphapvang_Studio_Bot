@@ -1,64 +1,92 @@
 import streamlit as st
 import os
+import json
 from pathlib import Path
 from config import Config
-# from ..utils_dashboad.utils import get_status_info, render_status_badge
-# from ..utils_dashboad.ai_config_for_gpv_component import AIConfigHandler
 from core.ai_manager import AIManager
-import json
 from .gpv_render_scripts_dialog import ScriptDialog
-
 
 class RenderForm:  
     ai_manager = AIManager()
 
-    # =================================================================
-    # PHẦN 1: RENDER DANH MỤC FORM
-    # =================================================================
-
     @staticmethod
     def render_item_rows(ctrl, p, items, ai_script, project_name):
+        # 1. Inject CSS để tùy chỉnh giao diện (Popover rộng hơn cho dễ soạn kịch bản)
         st.markdown("""
             <style>
-                div[data-testid="stPopoverBody"] { width: 800px !important; max-width: 90vw !important; }
-                textarea { font-family: 'Consolas', monospace !important; font-size: 0.9rem !important; }
+                div[data-testid="stPopoverBody"] { width: 850px !important; max-width: 95vw !important; }
+                .form-card { border-left: 6px solid #ccc; transition: 0.3s; }
+                .form-card:hover { transform: translateX(5px); }
             </style>
         """, unsafe_allow_html=True)
         
         STATUS_STYLES = {
-            "Chưa quay": {"color": "#808080", "bg": "#f8f9fa"},
-            "Đã quay": {"color": "#007bff", "bg": "#e7f3ff"},
-            "Hoàn chỉnh": {"color": "#28a745", "bg": "#d4edda"}
+            "Chưa quay": {"color": "#808080", "bg": "#f8f9fa", "icon": "⚪"},
+            "Đã quay": {"color": "#007bff", "bg": "#e7f3ff", "icon": "🔵"},
+            "Hoàn chỉnh": {"color": "#28a745", "bg": "#d4edda", "icon": "🟢"}
         }
+        
         status_options = list(STATUS_STYLES.keys())
-        p_folder = p.get('project_folder') or p.get('folder_name') or project_name
+        p_folder = p.get('folder_name') or project_name
 
         for idx, s in enumerate(items):
-            sub_path = os.path.join(Config.BASE_STORAGE, p_folder, s['sub_folder'])
-            current_status = get_status_info(sub_path, s.get('status'))
+            # 2. Xử lý trạng thái dựa trên Logic thực tế + DB
+            # Sử dụng Config.get_path để lấy đường dẫn chuẩn Pathlib
+            sub_folder = s.get('sub_folder') or f"Form_{s['id']}"
+            current_status = get_status_info(p_folder, sub_folder, s.get('status'))
+            
+            # Tách tên Module và Form
             parts = s['sub_title'].split('|')
-            mod_name, form_name = parts[0], parts[-1]
+            mod_name = parts[0] if len(parts) > 1 else "General"
+            form_name = parts[-1]
+            
             style = STATUS_STYLES.get(current_status, STATUS_STYLES["Chưa quay"])
 
+            # 3. Vẽ Card cho từng Form
             with st.container(border=True):
-                st.markdown(f"""<style>div[data-testid="stVerticalBlock"] > div:has(input[key="st_{s['id']}"]) 
-                    {{ border-left: 6px solid {style['color']} !important; background-color: {style['bg']}; }}</style>""", unsafe_allow_html=True)
+                # Border-left màu theo trạng thái
+                st.markdown(f"""
+                    <style>
+                        div[data-testid="stVerticalBlock"] > div:has(input[key="st_{s['id']}"]) {{
+                            border-left: 6px solid {style['color']} !important;
+                            background-color: {style['bg']};
+                        }}
+                    </style>
+                """, unsafe_allow_html=True)
 
-                col_info, col_status, col_actions = st.columns([3, 1.2, 2.3])
+                col_info, col_status, col_actions = st.columns([3.5, 1.2, 2.5])
                 
                 with col_info:
                     st.markdown(f"**{form_name}**", help=f"🔗 Link: {s.get('url', 'N/A')}")
-                    col_badge, col_script = st.columns([1, 1])
-                    with col_badge: render_status_badge(current_status)
-                    with col_script:
-                        if s.get('has_script'): 
-                            st.markdown("<span style='color: #28a745; font-size: 0.75rem; font-weight: bold;'>📜 Đã có kịch bản</span>", unsafe_allow_html=True)
-                    st.caption(f"📁 {s['sub_folder']} | 📦 {mod_name}")
                     
+                    c_badge, c_script = st.columns([1, 1])
+                    with c_badge: 
+                        render_status_badge(current_status)
+                    with c_script:
+                        # Kiểm tra xem file JSON kịch bản có tồn tại thực tế không
+                        metadata_path = Config.get_path(app=p_folder, module=sub_folder, asset_type="metadata")
+                        has_script_file = (metadata_path / "latest_script.json").exists()
+                        if has_script_file: 
+                            st.markdown("<span style='color: #28a745; font-size: 0.75rem; font-weight: bold;'>📜 Đã có kịch bản</span>", unsafe_allow_html=True)
+                    
+                    st.caption(f"📁 {sub_folder} | 📦 {mod_name}")
+                    
+                    # Hiển thị Preview các trường (fields) từ Metadata Omni 2026
                     meta = s.get('metadata', {})
-                    if isinstance(meta, dict) and meta.get('form_fields'):
-                        fields = [f.get('label') for f in meta['form_fields'][:5] if isinstance(f, dict) and f.get('label')]
-                        if fields: st.markdown(f"<div style='font-size: 0.75rem; color: #666; font-style: italic;'>📝 {', '.join(fields)}...</div>", unsafe_allow_html=True)
+                    if isinstance(meta, str):
+                        try: meta = json.loads(meta)
+                        except: meta = {}
+                    
+                    # Bóc tách fields từ cấu trúc layout/active_form
+                    fields = []
+                    layout = meta.get('layout', {})
+                    active_form = layout.get('active_form', {})
+                    inputs = active_form.get('inputs') if active_form else layout.get('main_content', {}).get('inputs', [])
+                    
+                    if inputs:
+                        fields = [f.get('label') for f in inputs[:5] if isinstance(f, dict) and f.get('label')]
+                        if fields: 
+                            st.markdown(f"<div style='font-size: 0.75rem; color: #666; font-style: italic;'>📝 {', '.join(fields)}...</div>", unsafe_allow_html=True)
 
                 with col_status:
                     st.markdown(f"<p style='font-size: 0.7rem; font-weight: bold; margin-bottom:0;'>TRẠNG THÁI</p>", unsafe_allow_html=True)
@@ -67,26 +95,34 @@ class RenderForm:
                 with col_actions:
                     st.write("") 
                     c_man, c_auto, c_opt = st.columns([1, 1, 1])
-                    if c_man.button("🎥", key=f"m_{s['id']}", help="Quay thủ công"):
+                    
+                    if c_man.button("🎥", key=f"m_{s['id']}", help="Vào Studio quay/biên tập"):
                         RenderForm.navigate_to_studio(p, s, "Quay thủ công")
                     
-                    with c_auto.popover("🤖", help="AI soạn kịch bản"):
-                        # KẾT NỐI CLASS SCRIPT DIALOG TẠI ĐÂY
+                    # Nút AI soạn kịch bản - Popover rộng
+                    with c_auto.popover("🤖", help="AI soạn kịch bản tự động"):
                         ScriptDialog.render_ai_config_panel(ctrl, p, s, mod_name, form_name, ai_script)
                     
+                    # Các tùy chọn phụ
                     with c_opt.popover("⚙️"):
                         RenderForm.render_extra_options(ctrl, s, idx, len(items), p)
 
     @staticmethod
     def render_status_selector(ctrl, s, current_status, options):
-        current_idx = options.index(current_status) if current_status in options else 0
+        try:
+            current_idx = options.index(current_status)
+        except:
+            current_idx = 0
+            
         new_st = st.selectbox("ST", options, index=current_idx, key=f"st_{s['id']}", label_visibility="collapsed")
         if new_st != current_status:
-            if ctrl.update_sub_content(s['id'], new_status=new_st): st.rerun()
+            # Cập nhật trạng thái vào Database
+            if ctrl.update_sub_content(sub_id=s['id'], status=new_st):
+                st.rerun()
 
     @staticmethod
     def render_extra_options(ctrl, s, idx, total, p):
-        st.markdown("**Quản lý**")
+        st.markdown("**Sắp xếp & Xóa**")
         c1, c2 = st.columns(2)
         if c1.button("🔼", disabled=(idx==0), key=f"u_{s['id']}", use_container_width=True): 
             ctrl.move_sub_content(s['id'], "up")
@@ -95,9 +131,11 @@ class RenderForm:
             ctrl.move_sub_content(s['id'], "down")
             st.rerun()
         
-        p_folder = p.get('project_folder') or p.get('folder_name') or ""
-        if st.button("🗑️ XÓA", type="primary", use_container_width=True, key=f"del_{s['id']}"):
-            if ctrl.delete_sub_content(s['id'], p_folder, s['sub_folder']): st.rerun()
+        st.divider()
+        p_folder = p.get('folder_name', "")
+        if st.button("🗑️ XÓA FORM", type="primary", use_container_width=True, key=f"del_{s['id']}"):
+            if ctrl.delete_sub_content(s['id'], p_folder, s.get('sub_folder')): 
+                st.rerun()
 
     @staticmethod
     def navigate_to_studio(p, s, tab_name):
@@ -105,63 +143,40 @@ class RenderForm:
         st.session_state.selected_scene = s
         st.rerun()
 
-# -------------------CÁC HÀM BỔ TRỢ---------------------------------
-def get_status_info(sub_path, manual_status=None):
+# ------------------- CÁC HÀM BỔ TRỢ CHUẨN PATHLIB -------------------
+
+def get_status_info(app_folder, sub_folder, manual_status=None):
     """
-    Kiểm tra trạng thái video dựa trên file thực tế trong folder storage.
-    Ưu tiên trạng thái được lưu trong Database nếu có.
+    Kiểm tra trạng thái dựa trên thực tế folder storage.
     """
     status_list = ["Chưa quay", "Đã quay", "Hoàn chỉnh"]
-    
-    # Nếu trong DB đã có trạng thái cụ thể thì trả về luôn
     if manual_status in status_list: 
         return manual_status
         
-    # Đường dẫn kiểm tra file thực tế
-    # Cấu trúc: storage/Giai_Phap_Vang/Form_Name/raw/raw_video.mp4
-    raw_file = os.path.join(sub_path, "raw", "raw_video.mp4")
-    output_dir = os.path.join(sub_path, "outputs")
+    # Lấy đường dẫn bằng Config chuẩn
+    raw_dir = Config.get_path(app=app_folder, module=sub_folder, asset_type="raw")
+    output_dir = Config.get_path(app=app_folder, module=sub_folder, asset_type="outputs")
     
-    # Kiểm tra xem đã có video thành phẩm chưa
-    has_output = False
-    if os.path.exists(output_dir):
-        # Kiểm tra xem có file .mp4 nào trong thư mục outputs không
-        has_output = any(f.endswith('.mp4') for f in os.listdir(output_dir))
-    
-    if has_output: 
+    # Check Hoàn chỉnh: Có file mp4 trong outputs
+    if output_dir.exists() and any(f.suffix == '.mp4' for f in output_dir.glob("*")):
         return "Hoàn chỉnh"
     
-    if os.path.exists(raw_file): 
+    # Check Đã quay: Có bất kỳ file video nào trong raw (.webm, .mp4)
+    if raw_dir.exists() and any(f.suffix in ['.mp4', '.webm'] for f in raw_dir.glob("*")):
         return "Đã quay"
         
     return "Chưa quay"
 
 def render_status_badge(status):
-    """
-    Hiển thị tag trạng thái có màu sắc đẹp mắt trên UI Streamlit.
-    Vũ gọi hàm này trong file Dashboard Component nhé.
-    """
     colors = {
-        "Chưa quay": "gray",    # Màu xám cho việc chưa bắt đầu
-        "Đã quay": "blue",      # Màu xanh dương cho bản thô
-        "Hoàn chỉnh": "green"   # Màu xanh lá cho thành phẩm
+        "Chưa quay": "#808080",
+        "Đã quay": "#007bff",
+        "Hoàn chỉnh": "#28a745"
     }
-    
-    color = colors.get(status, "gray")
-    
-    # Sử dụng st.status hoặc đơn giản là st.markdown với style
-    return st.markdown(
-        f"""
-        <span style="
-            background-color: {color};
-            color: white;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        ">
-            {status}
+    color = colors.get(status, "#808080")
+    st.markdown(f"""
+        <span style="background-color: {color}; color: white; padding: 2px 10px; 
+        border-radius: 12px; font-size: 0.7rem; font-weight: bold; white-space: nowrap;">
+            {status.upper()}
         </span>
-        """, 
-        unsafe_allow_html=True
-    )
+    """, unsafe_allow_html=True)

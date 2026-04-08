@@ -11,7 +11,7 @@ for p in ["workspace", "outputs", "assets"]:
     os.makedirs(p, exist_ok=True)
 
 st.set_page_config(
-    page_title="Giaiphapvang Studio", 
+    page_title="UngDungVang Studio", 
     layout="wide", 
     page_icon="🎬"
 )

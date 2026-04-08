@@ -1,105 +1,183 @@
 import os
 import json
+import sqlite3
 import asyncio
 from datetime import datetime
 from config import Config 
 
 class VisionMachine:
     def __init__(self):
-        self.scanner_script = ""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        js_path = os.path.join(current_dir, 'scanner.js')
-        
-        try:
-            if os.path.exists(js_path):
-                print('--- [👁️] Đang nạp tri thức từ scanner.js ---')
-                with open(js_path, 'r', encoding='utf-8') as f:
-                    content = f.read().strip()
-                
-                self.scanner_script = f"""
-                async () => {{
-                    try {{
-                        {content}
-                        if (typeof scanPage === 'function') {{
-                            return await scanPage();
-                        }}
-                        return {{ error: 'Hàm scanPage không tồn tại' }};
-                    }} catch (e) {{
-                        return {{ error: 'JS Error: ' + e.message }};
-                    }}
-                }}
-                """
-                print(f"✅ VisionMachine: Đã sẵn sàng.")
-            else:
-                self.scanner_script = "async () => { return { error: 'Missing scanner.js' }; }"
-        except Exception as e:
-            print(f"❌ Vision Init Error: {e}")
+        # Thiết lập đường dẫn JS
+        self.js_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'js')
+        # Cache scripts để không phải đọc file liên tục
+        self._scripts_cache = {}
+        print(f"--- [👁️] VisionMachine khởi tạo thành công tại: {self.js_dir} ---")
 
-    async def _execute_scan(self, page, is_acting: bool):
-        """Hàm thực thi lõi - Trái tim của hệ thống quét"""
-        bot_tag = "🎭 [Bot Diễn Viên]" if is_acting else "🕵️ [Bot Trinh Sát]"
+    def _get_combined_script(self, engine_type):
+        """
+        Kết hợp base_utils + engine chuyên biệt.
+        engine_type: 'scout_engine' hoặc 'actor_engine'
+        """
+        if engine_type in self._scripts_cache:
+            return self._scripts_cache[engine_type]
+
+        try:
+            base_utils_path = os.path.join(self.js_dir, 'base_utils.js')
+            engine_path = os.path.join(self.js_dir, f'{engine_type}.js')
+
+            js_code = ""
+            # 1. Nạp Utils
+            if os.path.isfile(base_utils_path):
+                with open(base_utils_path, 'r', encoding='utf-8') as f:
+                    js_code += f.read() + "\n"
+            
+            # 2. Nạp Engine
+            if os.path.isfile(engine_path):
+                with open(engine_path, 'r', encoding='utf-8') as f:
+                    js_code += f.read()
+            else:
+                raise FileNotFoundError(f"Không tìm thấy file: {engine_path}")
+
+            # 3. Đóng gói vào Anonymous Async Function
+            final_script = f"""
+            async () => {{
+                try {{
+                    {js_code}
+                    if (typeof scanPage === 'function') {{
+                        return await scanPage();
+                    }}
+                    return {{ error: 'Hàm scanPage() không tồn tại trong {engine_type}' }};
+                }} catch (e) {{
+                    return {{ error: 'JS Exception in {engine_type}: ' + e.stack }};
+                }}
+            }}
+            """
+            self._scripts_cache[engine_type] = final_script
+            return final_script
+        except Exception as e:
+            return f"async () => {{ return {{ error: 'Python Load Error: {str(e)}' }}; }}"
+
+    async def _execute_scan(self, page, is_acting: bool, context: dict = None):
+        if context is None: context = {}
+        tag = "🎭 [Actor]" if is_acting else "🕵️ [Scout]"
         
         if page.is_closed():
-            print(f"🛑 {bot_tag}: Trình duyệt đã đóng.")
+            print(f"🛑 {tag}: Browser closed.")
             return None
 
         try:
-            # 1. Đợi trạng thái mạng ổn định
+            # --- FIX LỖI .catch(): Dùng try/except chuẩn Python ---
             try:
-                await page.wait_for_load_state('networkidle', timeout=8000) 
-            except:
-                pass 
-
-            # 2. Cấy vai diễn vào Browser trước khi thực thi
+                # Chờ network ổn định tối đa 3 giây
+                await page.wait_for_load_state('networkidle', timeout=3000)
+            except Exception:
+                # Nếu timeout thì cứ tiếp tục, không sao cả
+                pass
+            
+            # Lấy script tương ứng
+            engine_name = "actor_engine" if is_acting else "scout_engine"
+            script = self._get_combined_script(engine_name)
+            
+            # Tiêm biến môi trường
             await page.evaluate(f"window.isBotActing = {'true' if is_acting else 'false'};")
-
-            # 3. Thực thi nội soi
-            data = await page.evaluate(self.scanner_script)
+            
+            # Chạy script (Nên dùng wait_for_function nếu cần đợi kết quả JS)
+            data = await page.evaluate(script)
             
             if not data or "error" in data:
-                print(f"🛑 {bot_tag} Lỗi: {data.get('error', 'No data')}")
-                return None
+                print(f"⚠️ {tag} JS Error: {data.get('error') if data else 'Null output'}")
+                return data
 
-            # 4. Đóng gói kết quả chuẩn hóa
+            # --- QUẢN LÝ TÀI NGUYÊN ---
+            crumbs = data.get("navigation", {}).get("breadcrumbs", [])
+            form_identity = context.get("form", crumbs[-1] if crumbs else "Main_Dashboard")
+            
+            storage_dir = context.get("target_dir")
+            if not storage_dir:
+                sub_folder = context.get("parent_folder", "General_Session")
+                storage_dir = os.path.join(Config.BASE_STORAGE, sub_folder, "vision_assets")
+            
+            os.makedirs(storage_dir, exist_ok=True)
+            
+            mode_prefix = "actor" if is_acting else "scout"
+            file_name = f"{mode_prefix}_{form_identity.replace(' ', '_')}_view.png"
+            full_path = os.path.join(storage_dir, file_name)
+            
+            await page.screenshot(path=full_path)
+            relative_screenshot = os.path.relpath(full_path, Config.BASE_STORAGE)
+
             return {
-                "url": page.url,
-                "mode": "ACTOR" if is_acting else "SCOUT",
-                "layout": data.get("main_content", {}),
+                "session": {
+                    "url": page.url,
+                    "app": context.get("app", "Giaiphapvang"),
+                    "form": form_identity,
+                    "mode": "ACTOR" if is_acting else "SCOUT",
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                },
                 "navigation": data.get("navigation", {}),
+                "main_content": data.get("main_content", {}), 
                 "active_form": data.get("active_form", {}),
-                "timestamp": datetime.now().strftime("%H:%M:%S")
+                "environment": {
+                    "screenshot": relative_screenshot,
+                    "viewport": page.viewport_size
+                }
             }
+
         except Exception as e:
-            print(f"❌ {bot_tag} Exception: {e}")
+            print(f"❌ {tag} System Error: {e}")
             return None
 
-    async def scout_report(self, page):
-        """
-        NHIỆM VỤ BOT TRINH SÁT:
-        - Quét sâu (Deep Scan), tự click vào các nút 'Thêm/Sửa' để lấy Metadata của Form ẩn.
-        - Phục vụ giai đoạn lập kịch bản sản xuất.
-        """
-        print("🕵️ [Bot Trinh Sát]: Đang đi thám thính cấu trúc trang...")
-        return await self._execute_scan(page, is_acting=False)
+    # --- WRAPPERS ---
+    async def scout_report(self, page, context=None):
+        """Dùng để quét toàn bộ hệ thống tạo Knowledge Base"""
+        res = await self._execute_scan(page, is_acting=False, context=context)
+        if res and "error" not in res:
+            await self.save_to_knowledge(res)
+        return res
 
-    async def actor_view(self, page):
-        """
-        NHIỆM VỤ BOT DIỄN VIÊN:
-        - Quét nhanh bề mặt (Current View), lấy tọa độ chính xác để AI tương tác.
-        - Phục vụ giai đoạn quay phim/quay màn hình video tự động.
-        """
-        print("🎭 [Bot Diễn Viên]: Đang đo đạc tọa độ để diễn...")
-        return await self._execute_scan(page, is_acting=True)
+    async def actor_view(self, page, context=None):
+        """Dùng trong lúc đang quay phim/diễn viên hành động"""
+        res = await self._execute_scan(page, is_acting=True, context=context)
+        if res and "error" not in res:
+            await self.save_to_knowledge(res)
+        return res
 
-    
-    async def check_health(self, page):
-        """Kiểm tra nhanh xem trang có rỗng hay không bằng Actor View"""
-        data = await self.actor_view(page)
-        if not data: return False, ["Lỗi kết nối"]
+    async def save_to_knowledge(self, scan_result):
+        """Lưu tri thức vào SQLite"""
+        if not scan_result: return
         
-        layout = data.get('layout', {})
-        has_ui = len(layout.get('actions', [])) > 0 or len(layout.get('inputs', [])) > 0
-        
-        if not has_ui:
-            return False, ["Trang trống hoặc chưa load UI"]
-        return True, []
+        ss = scan_result["session"]
+        try:
+            with sqlite3.connect(Config.DB_PATH) as conn:
+                cursor = conn.cursor()
+                # Tự động tạo bảng nếu chưa có
+                cursor.execute('''CREATE TABLE IF NOT EXISTS knowledge_base 
+                    (id INTEGER PRIMARY KEY AUTOINCREMENT, 
+                     app_name TEXT, 
+                     form_name TEXT, 
+                     metadata_json TEXT, 
+                     screenshot_path TEXT, 
+                     url TEXT, 
+                     updated_at DATETIME,
+                     UNIQUE(app_name, form_name, url))''')
+
+                # Upsert dữ liệu (Nếu trùng URL + Form thì cập nhật bản mới nhất)
+                sql = '''INSERT INTO knowledge_base 
+                         (app_name, form_name, metadata_json, screenshot_path, url, updated_at)
+                         VALUES (?, ?, ?, ?, ?, ?)
+                         ON CONFLICT(app_name, form_name, url) DO UPDATE SET
+                         metadata_json=excluded.metadata_json,
+                         screenshot_path=excluded.screenshot_path,
+                         updated_at=excluded.updated_at'''
+                
+                cursor.execute(sql, (
+                    ss["app"], 
+                    ss["form"],
+                    json.dumps(scan_result, ensure_ascii=False),
+                    scan_result["environment"]["screenshot"],
+                    ss["url"],
+                    ss["timestamp"]
+                ))
+                conn.commit()
+        except Exception as e:
+            print(f"❌ [DB Error]: {e}")

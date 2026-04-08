@@ -3,6 +3,7 @@ import os
 import time
 import json
 from playwright.async_api import async_playwright
+import traceback
 
 # Import các module nội bộ của Vũ
 from .audio_machine import AudioMachine
@@ -19,7 +20,7 @@ class AutoVideoEngine:
         self.logo_path = logo_path
         self.target_domain = os.getenv("TARGET_DOMAIN", "https://giaiphapvang.net")
         
-        # 1. Khởi tạo "Con mắt" AI (Bản Sync - KHÔNG dùng await)
+        # 1. Khởi tạo "Con mắt" AI
         self.vision = VisionMachine()
         
         # 2. Khởi tạo bộ phận Đăng nhập
@@ -45,156 +46,208 @@ class AutoVideoEngine:
         return len(missing) == 0, missing
 
 
-    async def run_studio_bot(self, target_url, script_steps, project_name, form_name):
+    async def run_studio_bot(self, target_url, script_steps, project_name, module_name, form_name):
         """
-        QUY TRÌNH: Kiểm tra -> Đăng nhập -> Diễn xuất -> Chốt Video -> Hậu kỳ
+        THỰC THI DIỄN XUẤT TỰ ĐỘNG
         """
-        # 1. Tinh lọc kịch bản
+        # 1. Tinh lọc kịch bản (Trị lỗi NoneType từ AI)
         script_steps = self._refine_script(script_steps)
         ready, missing = self.check_ready_for_production(script_steps)
         if not ready:
             print(f"🚨 Engine chưa sẵn sàng. Thiếu: {missing}")
             return None
 
-        # 2. Khởi tạo đường dẫn
-        video_dir = os.path.abspath(os.path.join(self.storage_path, project_name, "videos", form_name))
+        # 2. Thiết lập đường dẫn làm việc
+        video_dir = Config.get_asset_path(project_name, module_name, form_name, asset_type="videos")
         os.makedirs(video_dir, exist_ok=True)
+        print(f"📂 [PATH]: Thư mục làm việc: {video_dir}")
         
         raw_video_path = None
+        audio_sync_data = []
+        audio_paths = []
 
         async with async_playwright() as p:
-            # 3. Khởi tạo trình duyệt (Thêm slow_mo để quay phim mượt hơn)
-            browser = await p.chromium.launch(
-                headless=False, 
-                args=["--start-maximized", "--no-sandbox"]
-            )
+            browser = await p.chromium.launch(headless=False, args=["--start-maximized"])
+
+            # --- GIAI ĐOẠN 1: LOGIN ---
+            print("🔍 [Thám thính]: Đang chuẩn bị phiên đăng nhập...")
+            probe_context = await browser.new_context(no_viewport=True)
+            probe_page = await probe_context.new_page()
             
-            context = await browser.new_context(
+            if not await self.auth_machine.login(probe_page):
+                print("❌ Dọn sân thất bại: Không thể đăng nhập.")
+                await browser.close()
+                return None
+            
+            await probe_page.goto(target_url or self.target_domain, wait_until="networkidle")
+            state = await probe_context.storage_state()
+            await probe_context.close() 
+
+            # --- GIAI ĐOẠN 2: RECORDING ---
+            print(f"🎬 [Bấm máy]: Bắt đầu ghi hình tại: {video_dir}")
+            video_context = await browser.new_context(
+                storage_state=state, 
                 no_viewport=True, 
                 record_video_dir=video_dir, 
                 record_video_size={'width': 1920, 'height': 1080}
             )
-            page = await context.new_page()
+            page = await video_context.new_page()
+            await page.goto(target_url, wait_until="networkidle")
+            await asyncio.sleep(2) 
 
             try:
-                # 4. Đăng nhập & Điều hướng
-                if not await self.auth_machine.login(page):
-                    print("❌ Đăng nhập thất bại.")
-                    return None
+                # Thực thi diễn xuất chính
+                acting_result = await self._perform_acting(page, script_steps, video_dir)
                 
-                print(f"🚀 Di chuyển tới: {target_url}")
-                await page.goto(target_url or self.target_domain, wait_until="networkidle", timeout=60000)
-                await asyncio.sleep(2) 
+                if acting_result and isinstance(acting_result, tuple):
+                    audio_sync_data, audio_paths = acting_result
+                else:
+                    audio_sync_data, audio_paths = [], []
+
+                await asyncio.sleep(2) # End-card
                 
-                # 5. DIỄN XUẤT
-                # Trả về audio_sync_data để hậu kỳ khớp tiếng
-                audio_sync_data, audio_paths = await self._perform_acting(
-                    page, script_steps, video_dir
-                )
-                
-                # CHỐT VIDEO: Đợi frame cuối được ghi xong hoàn toàn
-                await asyncio.sleep(2)
-                
-                # QUAN TRỌNG: Lấy path TRƯỚC khi close context
-                # Cần await vì đây là bản async chuẩn
+                # Quan trọng: Lấy path video thô trước khi đóng context
                 raw_video_path = await page.video.path()
-                
-                # Đóng context để Playwright flush dữ liệu xuống đĩa
-                await context.close()
-                print(f"🎬 Video thô đã được lưu tại: {raw_video_path}")
+                await video_context.close()
+                print(f"📹 [VIDEO RAW]: {raw_video_path}")
                 
             except Exception as e:
-                print(f"❌ Lỗi trong lúc quay: {e}")
+                print(f"❌ Lỗi nghiêm trọng trong lúc quay: {e}")
+                traceback.print_exc()
             finally:
                 await browser.close()
 
-        # 6. HẬU KỲ (Bên ngoài vòng lặp Playwright)
-        if raw_video_path and os.path.exists(raw_video_path):
+        # --- GIAI ĐOẠN 3: HẬU KỲ ---
+        if raw_video_path and os.path.exists(raw_video_path) and audio_sync_data:
+            print(f"🎞️ [Hậu kỳ]: Bắt đầu Render video cuối cùng...")
             return self._run_post_production(
-                raw_video_path, 
-                audio_sync_data, 
-                script_steps, 
-                video_dir, 
-                form_name, 
-                audio_paths
+                raw_path=raw_video_path, 
+                sync_data=audio_sync_data, 
+                steps=script_steps, 
+                video_dir=video_dir, 
+                form_name=form_name, 
+                audio_files=audio_paths
             )
         
+        print("⚠️ Không đủ điều kiện để hậu kỳ (Thiếu video hoặc audio sync).")
         return None
-
-    def _refine_script(self, script_steps):
-        """Gỡ bỏ các lớp bọc JSON dư thừa từ AI (Qwen, Llama, Gemini)"""
-        if not isinstance(script_steps, list):
-            return []
-        
-        # Nếu AI bọc kịch bản trong 1 Object nằm trong List: [{ 'flow': [...] }]
-        if len(script_steps) == 1 and isinstance(script_steps[0], dict):
-            first_item = script_steps[0]
-            possible_keys = ["flow", "kịch_bản_video", "steps", "script", "data"]
-            for key in possible_keys:
-                if key in first_item and isinstance(first_item[key], list):
-                    print(f"⚠️ Đã gỡ lớp bọc '{key}' từ AI.")
-                    return first_item[key]
-        
-        return script_steps
-
+    
     async def _perform_acting(self, page, script_steps, video_dir):
+        """
+        [PHÂN CẢNH DIỄN XUẤT] - Bảo vệ đa tầng chống 'NoneType'.
+        """
         audio_sync_data = []
         audio_paths = []
         video_start_time = time.time()
 
-        for i, step in enumerate(script_steps):
-            # Tính offset thời gian dựa trên thời điểm bắt đầu quay
-            current_offset = time.time() - video_start_time
-            speech_text = step.get("vo") or step.get("speak") or step.get("text", "")
-            
-            # 1. Tạo âm thanh
-            a_path = os.path.join(video_dir, f"step_{i}.mp3")
-            try:
-                # Gọi audio_machine (giả định đã là async)
-                duration = await self.audio_machine.generate(speech_text, a_path)
-            except Exception as e:
-                print(f"⚠️ Lỗi Voice bước {i+1}: {e}")
-                duration = 2.0
+        print(f"🎭 [Bot Diễn Viên]: Đang diễn {len(script_steps)} phân cảnh...")
 
-            audio_paths.append(a_path)
-            audio_sync_data.append({
-                "start_at": current_offset, 
-                "file_path": a_path, 
-                "text": speech_text
-            })
+        try:
+            for i, step in enumerate(script_steps):
+                # Chốt chặn NoneType tại vòng lặp
+                if step is None or not isinstance(step, dict):
+                    print(f"⚠️ Bỏ qua bước {i} do dữ liệu không hợp lệ.")
+                    continue 
 
-            # 2. Xử lý Subtitle trên Browser (để quay phim trực tiếp)
-            if hasattr(self.effect_machine, 'show_subtitle'):
-                await self.effect_machine.show_subtitle(page, speech_text)
+                # Trích xuất nội dung Voice-over
+                speech_text = (
+                    step.get("vo") or 
+                    step.get("speak") or 
+                    step.get("text") or 
+                    f"Thực hiện {step.get('action', 'thao tác')}"
+                )
+                speech_text = str(speech_text).strip()
+                
+                print(f"🎬 Cảnh {i+1}/{len(script_steps)}: {speech_text[:60]}...")
 
-            # 3. Studio thực thi (Thêm wait_for_load_state để tránh mất frame)
-            await self.studio_machine.execute_step(page, step)
-            
-            # 4. Kiểm tra sức khỏe UI
-            await self.vision.check_health(page)
+                # 1. Tạo Audio
+                a_filename = f"step_{i}_{int(time.time())}.mp3"
+                a_path = os.path.join(video_dir, a_filename)
+                duration = 2.0 
+                try:
+                    duration = await self.audio_machine.generate(speech_text, a_path)
+                except Exception as audio_err:
+                    print(f"⚠️ Lỗi Audio bước {i}: {audio_err}")
 
-            # 5. Đợi voice đọc xong (Trừ hao một chút để mượt)
-            wait_time = max(0.5, duration + 0.5) 
-            await asyncio.sleep(wait_time)
+                # 2. Tính toán Sync & Hiển thị Subtitle
+                current_offset = time.time() - video_start_time
+                if hasattr(self.effect_machine, 'show_subtitle'):
+                    await self.effect_machine.show_subtitle(page, speech_text)
 
-        # Kết thúc phim
-        if hasattr(self.effect_machine, 'clear_effects'):
-            await self.effect_machine.clear_effects(page)
+                # 3. Thực thi UI
+                success = await self.studio_machine.execute_step(page, step)
+                
+                # 4. Ghi nhận dữ liệu nếu thành công
+                if success:
+                    if os.path.exists(a_path):
+                        audio_paths.append(a_path)
+                        audio_sync_data.append({
+                            "start_at": current_offset,
+                            "file_path": a_path, 
+                            "text": speech_text,
+                            "duration": duration 
+                        })
+                    
+                    # Chờ voice đọc xong + nghỉ ngắn
+                    await asyncio.sleep(max(1.0, duration + 0.5))
+                else:
+                    print(f"❌ Diễn hỏng tại bước {i}")
+                
+                # 5. Dọn dẹp Subtitle
+                if hasattr(self.effect_machine, 'clear_effects'):
+                    await self.effect_machine.clear_effects(page)
+
+        except Exception as e:
+            print(f"🚨 Lỗi diễn xuất: {e}")
+            traceback.print_exc()
 
         return audio_sync_data, audio_paths
 
+    def _refine_script(self, script_steps):
+        """
+        Chuẩn hóa kịch bản, gỡ bỏ các lớp JSON bọc ngoài.
+        """
+        # Nếu AI trả về Dict có chứa list steps
+        if isinstance(script_steps, dict):
+            for key in ["steps", "flow", "script", "data", "kịch_bản_video"]:
+                if key in script_steps and isinstance(script_steps[key], list):
+                    script_steps = script_steps[key]
+                    break
+            if isinstance(script_steps, dict):
+                script_steps = [script_steps]
+
+        if not isinstance(script_steps, list):
+            return []
+
+        final_steps = []
+        for step in script_steps:
+            if not step or not isinstance(step, dict):
+                continue
+            
+            # Đồng bộ key action
+            if "action" not in step and "step" in step:
+                step["action"] = step["step"]
+
+            # Đảm bảo luôn có voice-over
+            if "vo" not in step:
+                step["vo"] = step.get("expected_result") or step.get("action") or "Đang thực hiện"
+                
+            final_steps.append(step)
+
+        return final_steps
+
+    
     def _run_post_production(self, raw_path, sync_data, steps, video_dir, form_name, audio_files, **kwargs):
-        'Hậu kỳ: Xử lý FFmpeg/MoviePy và dọn dẹp file rác.'
-
-        if not raw_path or not os.path.exists(raw_path):
-            print("❌ Không tìm thấy video gốc để hậu kỳ.")
-            return None
-
-        # Đợi file video thô được Playwright giải phóng hoàn toàn
-        time.sleep(3) 
+        """
+        Hậu kỳ: Ghép nối và dọn dẹp.
+        """
+        time.sleep(3) # Đợi Playwright nhả file video
         
-        final_path = os.path.join(video_dir, f"{form_name}_FINAL.mp4")
-        print(f"🎞️ Đang bắt đầu hậu kỳ video cho: {form_name}")
+        # Format tên file cuối cùng
+        slug_name = Config.slugify_vietnamese(form_name) if hasattr(Config, 'slugify_vietnamese') else form_name
+        final_path = os.path.join(video_dir, f"{slug_name}_FINAL.mp4")
+        
+        print(f"🎞️ Bắt đầu render: {final_path}")
         
         success = self.post_machine.process(
             video_path=raw_path, 
@@ -204,7 +257,6 @@ class AutoVideoEngine:
         )
         
         if success:
-            # Dọn dẹp audio tạm
             for p in audio_files:
                 try: os.remove(p)
                 except: pass
