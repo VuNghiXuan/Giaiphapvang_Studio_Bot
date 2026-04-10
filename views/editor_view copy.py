@@ -48,7 +48,7 @@ def render_editor(ai_studio, sub_path):
     if st.session_state.editing_index != -1:
         idx = st.session_state.editing_index
         render_segment_editor(idx, st.session_state.script_segments[idx], video_raw, 0)
-        if st.button("⬅️ Quay lại danh sách", use_container_width=True):
+        if st.button("⬅️ Quay lại danh sách", width='stretch'):
             st.session_state.editing_index = -1
             st.rerun()
         return 
@@ -70,7 +70,7 @@ def render_editor(ai_studio, sub_path):
         # --- CÁC NÚT BẤM AI ---
         c1, c2, c3 = st.columns(3) # Chia làm 3 cột
         
-        if c1.button("🎙️ 1. BÓC BĂNG THÔ", use_container_width=True):
+        if c1.button("🎙️ 1. BÓC BĂNG THÔ", width='stretch'):
             if os.path.exists(video_raw):
                 with st.spinner("Whisper đang nghe..."):
                     raw = ai_studio.transcribe_with_segments(video_raw)
@@ -79,7 +79,7 @@ def render_editor(ai_studio, sub_path):
                         st.rerun()
             else: st.error("Thiếu video gốc!")
 
-        if c2.button("✨ 2. AI CHUỐT LỜI", type="secondary", use_container_width=True):
+        if c2.button("✨ 2. AI CHUỐT LỜI", type="secondary", width='stretch'):
             if st.session_state.script_segments:
                 with st.spinner(f"AI ({ai_studio.provider}) đang sửa lỗi theo kịch bản..."):
                     # ĐÂY LÀ CHỖ GỌI HÀM THÔNG MINH ĐÂY VŨ!
@@ -93,7 +93,7 @@ def render_editor(ai_studio, sub_path):
                         st.rerun()
             else: st.error("Chưa có kịch bản thô để sửa!")
         
-        if c2.button("🎬 XUẤT VIDEO FINAL", type="primary", use_container_width=True):
+        if c2.button("🎬 XUẤT VIDEO FINAL", type="primary", width='stretch'):
             if st.session_state.script_segments:
                 msg = st.empty()
                 msg.info("🚀 Đang Render... Vũ đợi tí!")

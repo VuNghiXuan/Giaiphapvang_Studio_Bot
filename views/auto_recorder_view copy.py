@@ -55,7 +55,7 @@ def render_auto_recorder(sub_path, kb_instance):
         st.divider()
         video_area = st.empty()
 
-        if st.button("🚀 BẮT ĐẦU SẢN XUẤT (AUTO STUDIO)", use_container_width=True, type="primary"):
+        if st.button("🚀 BẮT ĐẦU SẢN XUẤT (AUTO STUDIO)", width='stretch', type="primary"):
             email_login = os.getenv("USER_EMAIL")
             pass_login = os.getenv("USER_PASSWORD")
 

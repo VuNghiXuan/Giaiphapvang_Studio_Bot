@@ -57,7 +57,7 @@
 #         st.subheader("🚀 Hành động")
 #         st.write("Bot sẽ quét cấu trúc Web và **tự động cập nhật** vào danh sách bài hướng dẫn nếu có thay đổi.")
         
-#         if st.button("🔍 CHẠY QUÉT & ĐỒNG BỘ DB", use_container_width=True, type="primary"):
+#         if st.button("🔍 CHẠY QUÉT & ĐỒNG BỘ DB", width='stretch', type="primary"):
 #             if not user_mail or not user_pass:
 #                 st.error("Vũ ơi, nhập tài khoản admin mới quét sâu vào các Form được!")
 #             elif not gpv_project:

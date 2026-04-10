@@ -43,8 +43,8 @@ def render_segment_editor(index, seg, video_raw, v):
             c1, c2 = st.columns(2)
             
             # Nút xác nhận trong Form
-            submitted = c1.form_submit_button("✅ XÁC NHẬN LƯU", use_container_width=True)
-            cancelled = c2.form_submit_button("❌ HỦY BỎ", use_container_width=True)
+            submitted = c1.form_submit_button("✅ XÁC NHẬN LƯU", width='stretch')
+            cancelled = c2.form_submit_button("❌ HỦY BỎ", width='stretch')
             
             if submitted:
                 st.session_state.script_segments[index]['start'] = round(new_start, 2)

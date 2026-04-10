@@ -6,6 +6,7 @@ import json
 from config import Config
 from .db_engine import DBEngine
 import traceback
+import streamlit as st
 
 class StudioController:
     def __init__(self):
@@ -86,55 +87,67 @@ class StudioController:
             "scanned_at": ""
         }
     
-    def add_sub_content(self, t_id, sub_title, parent_folder, url=None, metadata=None, status="Chưa quay"):
+    def add_sub_content(self, t_id, sub_title, parent_folder, url=None, metadata=None, status="Chưa quay", module_name="Chung"):
         """
-        Thêm nghiệp vụ con (Form) vào Database và tạo cấu trúc thư mục vật lý.
-        Khớp 100% với các tham số truyền từ Scraper.
+        Phiên bản Nâng cấp: Tự động xây dựng folder + Ghi nhận Module chính xác.
         """
         try:
             # 1. Tính toán vị trí hiển thị (Position)
             res = self.db.fetchone("SELECT MAX(position) as max_pos FROM sub_contents WHERE tutorial_id = ?", (t_id,))
             next_pos = (res['max_pos'] + 1) if res and res['max_pos'] is not None else 0
             
-            # 2. Xử lý Metadata (Gộp với mặc định)
+            # 2. Xử lý Metadata mặc định
+            # Đảm bảo hàm _get_default_metadata() của ông vẫn tồn tại nhé
             final_metadata = self._get_default_metadata()
             if isinstance(metadata, dict): 
                 final_metadata.update(metadata)
             
-            # 3. INSERT VÀO DATABASE
-            # Lưu ý: 'status' giờ đã được nhận diện như một tham số của hàm
+            # 3. XÂY DỰNG ĐƯỜNG DẪN LOGIC (Logic Path)
+            # Tách chuỗi theo dấu '|' và làm sạch từng phần
+            parts = [Config.slugify(p.strip()) for p in sub_title.split('|')]
+            
+            # Quy tắc đặc biệt của ông: 'chung' -> 'settings'
+            if len(parts) > 1 and parts[1] == "chung": 
+                parts[1] = "settings"
+                
+            logic_path = "/".join(parts)
+            
+            # 4. INSERT VÀO DATABASE (Đã thêm module_name)
             cursor = self.db.execute(
-                "INSERT INTO sub_contents (tutorial_id, sub_title, sub_folder, position, status, url, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                """
+                INSERT INTO sub_contents 
+                (tutorial_id, module_name, sub_title, sub_folder, position, status, url, metadata) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 (
                     t_id, 
+                    module_name, # 👈 Đưa tên Module vào đây để Dashboard hiển thị chuẩn
                     sub_title, 
-                    '', # sub_folder sẽ update ở bước sau
+                    logic_path, 
                     next_pos, 
-                    status, # Sử dụng giá trị truyền từ hàm (ví dụ: 'scanned' hoặc 'Đã quét')
+                    status, 
                     str(url or ""), 
                     json.dumps(final_metadata, ensure_ascii=False)
                 )
             )
             new_id = cursor.lastrowid
 
-            # 4. ĐỒNG BỘ ĐƯỜNG DẪN THƯ MỤC: {ID}_{slug_title}
-            # Dùng slugify để tên folder không có dấu/khoảng trắng, tránh lỗi OS
-            safe_sub_title = Config.slugify(sub_title)
-            unique_folder_name = f"{new_id}_{safe_sub_title}"
+            # 5. TẠO CẤU TRÚC THƯ MỤC VẬT LÝ (Giữ nguyên logic "Phòng thủ đa tầng")
+            app_slug = parent_folder if parent_folder else Config.APP_SLUG
+            base_module_path = Config.BASE_STORAGE / app_slug / logic_path
             
-            self.db.execute("UPDATE sub_contents SET sub_folder = ? WHERE id = ?", (unique_folder_name, new_id))
+            assets_structure = ["raw", "outputs", "assets", "metadata"]
             
-            # 5. TẠO CẤU TRÚC FOLDER VẬT LÝ "VÉT CẠN"
-            # Đường dẫn thực tế: storage / {parent_folder} / {unique_folder_name} / ...
-            for asset in ["raw", "outputs", "assets", "metadata"]:
-                Config.get_path(app=parent_folder, module=unique_folder_name, asset_type=asset)
+            for folder_type in assets_structure:
+                target_path = base_module_path / folder_type
+                target_path.mkdir(parents=True, exist_ok=True)
             
             self.db.commit()
-            print(f"✅ [StudioController]: Đã thêm Form '{sub_title}' với ID {new_id}")
+            print(f"✅ [StudioDB]: Đã tạo thành công Form '{sub_title}' (Module: {module_name})")
             return new_id
 
         except Exception as e:
-            print(f"❌ Lỗi add_sub_content: {e}")
+            print(f"❌ Lỗi add_sub_content: {str(e)}")
             self.db.rollback()
             return False
 
@@ -142,28 +155,27 @@ class StudioController:
     def update_sub_content(self, sub_id: int, **kwargs):
         """
         Cập nhật tri thức mới cho Form. 
-        Đồng bộ hóa metadata từ VisionMachine vào Database.
+        Đồng bộ hóa metadata từ VisionMachine và Module danh mục.
         """
         try:
             current = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
             if not current: return False
 
-            # 1. MAPPING THAM SỐ (Chống lọt lưới dữ liệu)
+            # 1. MAPPING THAM SỐ (Bổ sung module_name để không lọt lưới)
             new_url = kwargs.get('new_url') or kwargs.get('url')
             new_metadata = kwargs.get('new_metadata') or kwargs.get('metadata')
             new_status = kwargs.get('new_status') or kwargs.get('status')
             new_title = kwargs.get('new_title') or kwargs.get('title')
+            new_module = kwargs.get('module_name') or kwargs.get('new_module') # 👈 THÊM DÒNG NÀY
 
-            # 2. XỬ LÝ METADATA (Merge thông minh)
-            old_meta = json.loads(current['metadata']) if current['metadata'] else self._get_default_metadata()
+            # 2. XỬ LÝ METADATA (Merge thông minh - Giữ nguyên logic của ông)
+            old_meta = json.loads(current['metadata']) if current.get('metadata') else self._get_default_metadata()
             
             if new_metadata and isinstance(new_metadata, dict):
-                # Đồng bộ Screenshot và môi trường từ VisionMachine
                 if "environment" in new_metadata:
                     if "environment" not in old_meta: old_meta["environment"] = {}
                     old_meta["environment"].update(new_metadata["environment"])
                 
-                # Cập nhật các khối tri thức then chốt
                 for key in ["session", "navigation", "main_content", "active_form"]:
                     if key in new_metadata: 
                         old_meta[key] = new_metadata[key]
@@ -175,25 +187,29 @@ class StudioController:
 
             # 3. QUẢN LÝ TRẠNG THÁI (Status)
             status = new_status or current['status']
-            # Tự động kích hoạt trạng thái "Đã quét" khi có tri thức
             if new_metadata and status == 'Chưa quay': 
                 status = 'Đã quét'
 
-            # 4. THỰC THI (SQL chuẩn chỉnh)
+            # 4. THỰC THI (SQL cập nhật thêm module_name)
             self.db.execute("""
                 UPDATE sub_contents 
-                SET sub_title = :title, status = :status, url = :url, metadata = :meta 
+                SET sub_title = :title, 
+                    status = :status, 
+                    url = :url, 
+                    metadata = :meta,
+                    module_name = :mod_name  -- 👈 THÊM CỘT NÀY VÀO SQL
                 WHERE id = :id
             """, {
                 "id": sub_id, 
                 "title": new_title or current['sub_title'],
                 "status": status, 
                 "url": str(new_url or current['url'] or ""),
-                "meta": final_meta_str
+                "meta": final_meta_str,
+                "mod_name": new_module or current.get('module_name') # 👈 GÁN GIÁ TRỊ VÀO ĐÂY
             })
             
             self.db.commit()
-            print(f"✅ [StudioDB]: ID {sub_id} đã nạp tri thức mới thành công.")
+            print(f"✅ [StudioDB]: ID {sub_id} đã nạp tri thức và cập nhật Module thành công.")
             return True
 
         except Exception as e:
@@ -231,9 +247,10 @@ class StudioController:
 
 
     # --- HÀM BIÊN KỊCH: TRÁI TIM CỦA HỆ THỐNG ---
-    def get_formatted_meta_for_ai(self, sub_id):
+    def get_formatted_meta_for_ai(self, sub_id, director_notes="", target_goal="Thêm mới"):
         """
-        Rút gọn tri thức tối đa để AI viết kịch bản không bị "ngáo" tọa độ.
+        Rút gọn tri thức và tích hợp ý đồ đạo diễn để AI soạn kịch bản chuẩn xác.
+        target_goal: Thêm mới, Chỉnh sửa, Xóa, Xem báo cáo...
         """
         try:
             row = self.db.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
@@ -242,36 +259,56 @@ class StudioController:
 
             raw_meta = json.loads(sub.get('metadata', '{}'))
             
-            # Lọc lấy Label sạch (Bỏ qua tọa độ pixel rác)
-            short_intel = {
-                "breadcrumbs": raw_meta.get('navigation', {}).get('breadcrumbs', []),
-                "main_buttons": [a['label'] for a in raw_meta.get('main_content', {}).get('actions', []) if a.get('label')],
-                "form_inputs": [i['label'] for i in raw_meta.get('active_form', {}).get('inputs', []) if i.get('label')],
-                "form_buttons": [a['label'] for a in raw_meta.get('active_form', {}).get('actions', []) if a.get('label')]
-            }
+            # --- 🔍 CHUYỂN ĐỔI DỮ LIỆU SANG NHÃN CHUẨN ---
+            # Ưu tiên lấy từ sub_form_details (data ông đã quét), nếu không có mới lấy active_form
+            form_data = raw_meta.get('sub_form_details') or raw_meta.get('active_form') or {}
+            
+            page_info = raw_meta.get('page_info', {})
+            navigation = page_info.get('sidebar_path', [])
+            
+            # Lấy nhãn input (Bỏ rác "Không xác định")
+            raw_inputs = form_data.get('inputs', [])
+            form_inputs = [i['label'] for i in raw_inputs if i.get('label') and i.get('label') != "Không xác định"]
+            
+            # Lấy nhãn nút bấm
+            form_buttons = [b.get('text') for b in form_data.get('buttons', []) if b.get('text')]
+            main_buttons = [b.get('text') for b in raw_meta.get('buttons', []) if b.get('text')]
+            
+            # Slogan thương hiệu của ông Vũ
+            slogan = Config.SLOGANT
 
-            # Tạo Prompt kịch bản khung
+            # --- 🎭 XÂY DỰNG PROMPT BIÊN KỊCH CHI TIẾT ---
             prompt = f"""
-### 🎬 KỊCH BẢN: {sub.get('sub_title')}
-**Mục tiêu:** Diễn hoạt nghiệp vụ vào đến màn hình '{short_intel['breadcrumbs'][-1] if short_intel['breadcrumbs'] else 'Nghiệp vụ'}'.
+    ### 🎬 KỊCH BẢN VIDEO: {sub.get('sub_title')}
+    **Slogan:** {slogan}
+    **Mục tiêu nghiệp vụ:** {target_goal} (Đảm bảo các bước diễn phải phục vụ mục tiêu này).
 
----
-### 📍 LỘ TRÌNH DI CHUYỂN
-Trang Chủ -> Click '{sub.get('module_name', 'Hệ thống')}' -> {' > '.join(short_intel['breadcrumbs'])}
+    ---
+    ### 📍 LỘ TRÌNH DI CHUYỂN (NAVIGATION)
+    Trang Chủ -> {' -> '.join(navigation) if navigation else 'Vào module tương ứng'}
 
----
-### 🔍 CÁC ĐIỂM TƯƠNG TÁC (NHÃN CHUẨN)
-- **Nhập liệu:** {', '.join(short_intel['form_inputs']) or 'Không có'}
-- **Nút bấm:** {', '.join(short_intel['main_buttons'] + short_intel['form_buttons']) or 'Không có'}
+    ---
+    ### 🔍 TRI THỨC HỆ THỐNG (LABELS CÓ THẬT)
+    - **Các ô nhập liệu phát hiện:** {', '.join(form_inputs) or 'Không có'}
+    - **Các nút bấm có thể tương tác:** {', '.join(list(set(main_buttons + form_buttons))) or 'Không có'}
 
----
-### 📝 YÊU CẦU:
-Viết kịch bản JSON gồm 3 giai đoạn: DI CHUYỂN -> TƯƠNG TÁC FORM -> KẾT THÚC.
-            """
+    ---
+    ### ✍️ LƯU Ý TỪ ĐẠO DIỄN VŨ:
+    {director_notes if director_notes else "Thực hiện đúng luồng nghiệp vụ chuẩn, thao tác dứt khoát."}
+
+    ---
+    ### 📝 YÊU CẦU ĐẦU RA (JSON FORMAT):
+    Hãy viết kịch bản JSON gồm 3 giai đoạn:
+    1. **DI CHUYỂN**: Các bước click menu để vào đúng màn hình.
+    2. **TƯƠNG TÁC**: Nhấn nút để mở form (ví dụ: Tạo mới), nhập liệu vào các trường [{', '.join(form_inputs)}] và chọn các giá trị mẫu phù hợp.
+    3. **KẾT THÚC**: Nhấn nút xác nhận (Lưu/Cập nhật) và đọc câu slogan kết thúc.
+
+    **Yêu cầu:** Chỉ được sử dụng các Label đã liệt kê ở trên. Tự suy luận giá trị nhập (value) phù hợp với nhãn trường.
+    """
             return {
                 "prompt_letter": prompt.strip(),
                 "sub_id": sub_id,
-                "raw_metadata": sub.get('metadata') # Vẫn gửi bản gốc phòng khi AI cần tọa độ chính xác
+                "raw_metadata": sub.get('metadata')
             }
         except Exception as e:
             print(f"❌ Lỗi biên kịch AI: {e}")
@@ -337,17 +374,19 @@ Viết kịch bản JSON gồm 3 giai đoạn: DI CHUYỂN -> TƯƠNG TÁC FORM 
     
     def delete_sub_content(self, sub_id, folder_name, sub_folder):
         """
-        folder_name: Tên folder dự án
-        sub_folder: Tên folder sub-content (ví dụ: 10_them_moi_khach_hang)
+        FIX 3: Xóa cực kỳ an toàn, kiểm tra tồn tại trước khi rmtree
         """
         try:
+            # Xóa trong DB trước
             self.db.execute("DELETE FROM sub_contents WHERE id = ?", (sub_id,))
             self.db.commit()
             
-            # Xóa folder bằng Pathlib
-            full_path = Config.get_path(app=folder_name, module=sub_folder)
-            if full_path.exists():
-                shutil.rmtree(full_path)
+            if sub_folder:
+                # Trỏ thẳng vào thư mục theo sub_folder trong DB
+                full_path = Config.BASE_STORAGE / Config.APP_SLUG / sub_folder
+                if full_path.exists() and full_path.is_dir():
+                    shutil.rmtree(full_path)
+                    print(f"🗑️ Đã xóa folder: {full_path}")
             return True
         except Exception as e:
             print(f"❌ Lỗi delete_sub_content: {e}")
@@ -355,3 +394,81 @@ Viết kịch bản JSON gồm 3 giai đoạn: DI CHUYỂN -> TƯƠNG TÁC FORM 
 
     def update_sub_content_metadata(self, sub_id, metadata):
         return self.update_sub_content(sub_id, metadata=metadata)
+    
+    def get_sub_by_title(self, title, t_id):
+        sql = "SELECT * FROM sub_contents WHERE sub_title = ? AND tutorial_id = ?"
+        return self.db.execute(sql, (title, t_id)).fetchone()
+    
+    def move_sub_content(self, sub_id, direction):
+        """
+        Thay đổi thứ tự hiển thị của sub_content (Form)
+        Sửa lỗi: Ép kiểu sqlite3.Row sang dict để sử dụng được hàm .get()
+        """
+        try:
+            # 1. Lấy item hiện tại từ DBEngine
+            row = self.db.get_sub_content_by_id(sub_id)
+            if not row:
+                print(f"⚠️ Không tìm thấy sub_content với ID: {sub_id}")
+                return False
+            
+            # Chuyển đổi sang dict để dùng .get() và tránh lỗi AttributeError
+            current_item = dict(row)
+            
+            # Đảm bảo lấy đúng tutorial_id và position (mặc định là 0 nếu None)
+            t_id = current_item.get('tutorial_id')
+            current_pos = current_item.get('position')
+            if current_pos is None: current_pos = 0
+
+            # 2. Tìm item hàng xóm (phía trên hoặc phía dưới)
+            target_row = self.db.get_neighbor_item(t_id, current_pos, direction)
+            
+            if target_row:
+                target_item = dict(target_row)
+                target_id = target_item.get('id')
+                target_pos = target_item.get('position')
+
+                if target_id is not None and target_pos is not None:
+                    # 3. Thực hiện đổi chỗ position trong Database
+                    # Gán position của thằng hàng xóm cho thằng hiện tại
+                    self.db.update_position(sub_id, target_pos)
+                    # Gán position cũ của thằng hiện tại cho thằng hàng xóm
+                    self.db.update_position(target_id, current_pos)
+                    
+                    self.db.commit() # Lưu thay đổi xuống file DB
+                    print(f"✅ Đã đổi chỗ ID {sub_id} ({current_pos}) với ID {target_id} ({target_pos})")
+                    return True
+            else:
+                print(f"ℹ️ Không có item nào ở phía {direction} để đổi chỗ.")
+                
+        except Exception as e:
+            print(f"❌ Lỗi move_sub_content: {e}")
+            if hasattr(self.db, 'rollback'):
+                self.db.rollback()
+                
+        return False
+    
+    # Trong file StudioController
+    def get_all_modules(self):
+        # Ưu tiên lấy từ cột module_name
+        query = "SELECT DISTINCT module_name FROM sub_contents WHERE module_name IS NOT NULL"
+        result = self.db.fetchall(query)
+        
+        if not result or len(result) == 0:
+            # Nếu chưa có dữ liệu ở cột mới, dùng tạm logic cũ để người dùng không thấy trống
+            query_backup = "SELECT DISTINCT sub_title FROM sub_contents WHERE sub_title LIKE '%|Home%'"
+            res_backup = self.db.fetchall(query_backup)
+            return sorted(list(set([r['sub_title'].split('|')[0].strip() for r in res_backup])))
+            
+        return [row['module_name'] for row in result]
+
+    def get_forms_by_module(self, module_name):
+        """Lấy danh sách form theo module"""
+        query = "SELECT sub_title FROM sub_contents WHERE module_name = ?"
+        try:
+            result = self.db.fetchall(query, (module_name,))
+            if not result: return []
+            return [{"sub_title": row['sub_title']} for row in result]
+        except Exception as e:
+            print(f"Lỗi get_forms_by_module: {e}")
+            return []
+    

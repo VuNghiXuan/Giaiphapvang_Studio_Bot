@@ -116,7 +116,7 @@ with st.sidebar:
     # ----------------------------------------------
     
     st.divider()
-    if st.button("🧹 Xóa bộ nhớ tạm", use_container_width=True):
+    if st.button("🧹 Xóa bộ nhớ tạm", width='stretch'):
         # Dọn dẹp file trong workspace
         for f in os.listdir("workspace"):
             try: 

@@ -31,9 +31,9 @@ def render_dashboard(ctrl):
 
     with st.sidebar:
         st.markdown("### 🚀 Studio Control")
-        if st.button("🔄 LÀM MỚI", use_container_width=True): st.rerun()
+        if st.button("🔄 LÀM MỚI", width='stretch'): st.rerun()
         if st.session_state.get('view') == "studio":
-            if st.button("⬅️ THOÁT STUDIO", use_container_width=True, type="primary"):
+            if st.button("⬅️ THOÁT STUDIO", width='stretch', type="primary"):
                 st.session_state.view = "dashboard"; st.rerun()
         st.divider()
         st.caption(f"📍 Storage: {Config.BASE_STORAGE}")
@@ -63,7 +63,7 @@ def render_dashboard(ctrl):
     # Nút thêm dự án mới
     with col_add.popover("➕ Dự án mới"):
         new_p_name = st.text_input("Tên dự án mới:")
-        if st.button("TẠO NGAY", use_container_width=True):
+        if st.button("TẠO NGAY", width='stretch'):
             if new_p_name and ctrl.create_tutorial(new_p_name): st.rerun()
 
     if selected_p_title == "-- Chọn dự án --":
@@ -105,7 +105,7 @@ def render_gpv_logic(ctrl, p):
     
     if st.session_state.current_modul == "🏠 TẤT CẢ MODULS":
         with st.expander("⚙️ ĐỒNG BỘ MODULE (CẤP 1)", expanded=True):
-            if st.button("🔍 QUÉT MODULES MỚI", use_container_width=True, type="primary"):
+            if st.button("🔍 QUÉT MODULES MỚI", width='stretch', type="primary"):
                 with st.spinner("Đang quét CMS..."):
                     extractor = GiaiphapvangScraper()
                     for mod in extractor.get_home_modules():
@@ -125,7 +125,7 @@ def render_gpv_logic(ctrl, p):
             with cols[i % 3].container(border=True):
                 st.markdown(f"### 📦 {mod}")
                 st.write(f"📄 {max(0, count)} Forms")
-                if st.button(f"Mở {mod}", key=f"btn_{mod}", use_container_width=True):
+                if st.button(f"Mở {mod}", key=f"btn_{mod}", width='stretch'):
                     st.session_state.current_modul = mod; st.rerun()
     else:
         render_gpv_forms(ctrl, p, st.session_state.current_modul)
@@ -137,7 +137,7 @@ def render_gpv_forms(ctrl, p, modul_name):
     if c1.button("⬅️ Quay lại danh sách Module"): 
         st.session_state.current_modul = "🏠 TẤT CẢ MODULS"; st.rerun()
     
-    if c2.button("🔍 CẬP NHẬT FORM (CẤP 2)", type="primary", use_container_width=True):
+    if c2.button("🔍 CẬP NHẬT FORM (CẤP 2)", type="primary", width='stretch'):
         with st.spinner("Đang quét chi tiết..."):
             db_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
             mod_home = next((s for s in db_subs if s['sub_title'] == f"{modul_name}|Home"), None)

@@ -26,7 +26,7 @@ def render_dashboard(ctrl):
     # --- SIDEBAR: GIỮ NGUYÊN CỦA VŨ ---
     with st.sidebar:
         if st.session_state.get('view') == "studio":
-            if st.button("⬅️ THOÁT STUDIO", use_container_width=True, type="primary"):
+            if st.button("⬅️ THOÁT STUDIO", width='stretch', type="primary"):
                 st.session_state.view = "dashboard"
                 st.session_state.active_project = None
                 st.session_state.active_sub = None
@@ -34,7 +34,7 @@ def render_dashboard(ctrl):
             st.divider()
 
         st.markdown("### 🛠️ Hệ thống")
-        if st.button("🔄 LÀM MỚI DANH MỤC", use_container_width=True):
+        if st.button("🔄 LÀM MỚI DANH MỤC", width='stretch'):
             st.rerun()
 
     # --- NỘI DUNG CHÍNH ---
@@ -52,7 +52,7 @@ def render_dashboard(ctrl):
             st.subheader("Tạo dự án quản lý thủ công")
             c1, c2 = st.columns([3, 1])
             n = c1.text_input("Tên dự án:", placeholder="Nhập tên dự án...", key="new_proj_name")
-            if c2.button("Tạo ngay", use_container_width=True, type="primary"):
+            if c2.button("Tạo ngay", width='stretch', type="primary"):
                 if n: 
                     ctrl.create_tutorial(n)
                     st.rerun()
@@ -69,7 +69,7 @@ def render_dashboard(ctrl):
                 with st.container(border=True):
                     c_name, c_btn = st.columns([4, 1])
                     c_name.markdown(f"**🖥️ {page_name}** \n<small>{info['url']}</small>", unsafe_allow_html=True)
-                    if c_btn.button("🤖 QUAY AUTO", key=f"auto_gpv_{page_name}", use_container_width=True):
+                    if c_btn.button("🤖 QUAY AUTO", key=f"auto_gpv_{page_name}", width='stretch'):
                         st.session_state.active_project = {"title": selected_proj_name, "folder_name": "giaiphapvang"}
                         st.session_state.active_sub = {"sub_title": page_name, "sub_folder": page_name.replace(" ", "_"), "page_info": info}
                         st.session_state.view = "studio"
@@ -89,7 +89,7 @@ def render_dashboard(ctrl):
             col_p_title, col_p_opt = st.columns([4.2, 0.8])
             col_p_title.markdown(f"### 📁 {p['title']}")
             
-            with col_p_opt.popover("⚙️", use_container_width=True):
+            with col_p_opt.popover("⚙️", width='stretch'):
                 st.subheader("Quản lý Dự án")
                 m_p1, m_p2 = st.columns(2)
                 if m_p1.button("🔼 Lên", key=f"up_p_{p['id']}", disabled=(p_idx == 0)):
@@ -99,17 +99,17 @@ def render_dashboard(ctrl):
 
                 st.divider()
                 new_p_title = st.text_input("Đổi tên dự án:", value=p['title'], key=f"edit_p_t_{p['id']}")
-                if st.button("💾 LƯU TÊN MỚI", key=f"btn_p_upd_{p['id']}", use_container_width=True):
+                if st.button("💾 LƯU TÊN MỚI", key=f"btn_p_upd_{p['id']}", width='stretch'):
                     ctrl.update_tutorial_title(p['id'], new_p_title); st.rerun()
 
                 st.divider()
                 sub_n = st.text_input("Tên hướng dẫn mới:", key=f"add_in_{p['id']}")
-                if st.button("➕ Thêm hướng dẫn", key=f"btn_add_{p['id']}", use_container_width=True):
+                if st.button("➕ Thêm hướng dẫn", key=f"btn_add_{p['id']}", width='stretch'):
                     if sub_n: 
                         ctrl.add_sub_content(p['id'], sub_n, p['folder_name']); st.rerun()
 
                 st.divider()
-                if st.button("🗑️ XÓA DỰ ÁN", key=f"del_p_{p['id']}", type="primary", use_container_width=True):
+                if st.button("🗑️ XÓA DỰ ÁN", key=f"del_p_{p['id']}", type="primary", width='stretch'):
                     ctrl.delete_tutorial(p['id'], p['folder_name']); st.rerun()
 
             # --- HIỂN THỊ CÁC BÀI HỌC (VIEW CŨ CỦA VŨ) ---
@@ -130,7 +130,7 @@ def render_dashboard(ctrl):
                 c_status.markdown(f"""<div style="background-color: {color}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; text-align: center; width: 95px; margin-top:8px;">{label}</div>""", unsafe_allow_html=True)
                 
                 # Nút Thủ công (Vào Studio tab thủ công)
-                if c_man.button("🎥 THỦ CÔNG", key=f"man_{s['id']}", use_container_width=True):
+                if c_man.button("🎥 THỦ CÔNG", key=f"man_{s['id']}", width='stretch'):
                     st.session_state.active_project = p
                     st.session_state.active_sub = s
                     st.session_state.view = "studio"
@@ -138,14 +138,14 @@ def render_dashboard(ctrl):
                     st.rerun()
 
                 # Nút Tự động (Vào Studio tab robot)
-                if c_auto.button("🤖 TỰ ĐỘNG", key=f"auto_{s['id']}", use_container_width=True):
+                if c_auto.button("🤖 TỰ ĐỘNG", key=f"auto_{s['id']}", width='stretch'):
                     st.session_state.active_project = p
                     st.session_state.active_sub = s
                     st.session_state.view = "studio"
                     st.session_state.active_tab = "Quay tự động 🤖"
                     st.rerun()
                 
-                with c_opt.popover("⚙️", use_container_width=True):
+                with c_opt.popover("⚙️", width='stretch'):
                     st.subheader("Cài đặt bài")
                     m1, m2 = st.columns(2)
                     if m1.button("🔼", key=f"up_{s['id']}", disabled=(idx == 0)):
@@ -158,8 +158,8 @@ def render_dashboard(ctrl):
                     new_st = st.selectbox("Trạng thái:", status_list, index=status_list.index(s.get('status', "Chưa quay")), key=f"sel_st_{s['id']}")
                     new_sub_name = st.text_input("Tên bài:", value=s['sub_title'], key=f"txt_{s['id']}")
                     
-                    if st.button("💾 LƯU", key=f"upd_{s['id']}", use_container_width=True):
+                    if st.button("💾 LƯU", key=f"upd_{s['id']}", width='stretch'):
                         ctrl.update_sub_content(s['id'], new_sub_name, new_st); st.rerun()
                     
-                    if st.button("🗑️ XÓA BÀI", key=f"del_s_{s['id']}", type="primary", use_container_width=True):
+                    if st.button("🗑️ XÓA BÀI", key=f"del_s_{s['id']}", type="primary", width='stretch'):
                         ctrl.delete_sub_content(s['id'], p['folder_name'], s['sub_folder']); st.rerun()

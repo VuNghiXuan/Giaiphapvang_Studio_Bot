@@ -28,7 +28,7 @@ class AIManager:
         self.provider = os.getenv("DEFAULT_PROVIDER", "Groq").strip()
         self.kb = KnowledgeBase() # Khởi tạo KnowledgeBase mới của Vũ
         self.whisper_model = None
-        print(f"[DEBUG-AI] Khởi tạo hệ thống với KnowledgeBase & Provider: {self.provider}")
+        # print(f"[DEBUG-AI] Khởi tạo hệ thống với KnowledgeBase & Provider: {self.provider}")
 
     def _clean_text(self, text):
         if not text: return ""

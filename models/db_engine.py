@@ -29,6 +29,7 @@ class DBEngine:
             CREATE TABLE IF NOT EXISTS sub_contents (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 tutorial_id INTEGER,
+                module_name TEXT,          -- 👈 THÊM CỘT NÀY ĐỂ XÂU CHUỖI
                 sub_title TEXT,
                 sub_folder TEXT,
                 position INTEGER DEFAULT 0,
@@ -78,3 +79,19 @@ class DBEngine:
         """Lấy tất cả dòng kết quả"""
         cursor = self.execute(query, params)
         return cursor.fetchall()
+    
+    def get_sub_content_by_id(self, sub_id):
+        """Lấy chi tiết một form theo ID"""
+        return self.fetchone("SELECT * FROM sub_contents WHERE id = ?", (sub_id,))
+
+    def get_neighbor_item(self, tutorial_id, current_pos, direction):
+        """Tìm item hàng xóm phía trên hoặc phía dưới để đổi chỗ"""
+        if direction == "up":
+            sql = "SELECT id, position FROM sub_contents WHERE tutorial_id = ? AND position < ? ORDER BY position DESC LIMIT 1"
+        else:
+            sql = "SELECT id, position FROM sub_contents WHERE tutorial_id = ? AND position > ? ORDER BY position ASC LIMIT 1"
+        return self.fetchone(sql, (tutorial_id, current_pos))
+
+    def update_position(self, sub_id, new_pos):
+        """Cập nhật vị trí mới vào DB"""
+        return self.execute("UPDATE sub_contents SET position = ? WHERE id = ?", (new_pos, sub_id))

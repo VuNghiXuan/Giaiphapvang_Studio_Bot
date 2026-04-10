@@ -48,7 +48,7 @@ def render_recorder(sub_path): # Nhận đường dẫn thư mục bài học co
         st.warning("Vui lòng không đóng trình duyệt khi đang quay.")
         st.caption(f"📁 Lưu tại: `{video_raw_file}`")
         
-        if st.button("❌ Hủy bỏ và Quay lại", use_container_width=True):
+        if st.button("❌ Hủy bỏ và Quay lại", width='stretch'):
             st.session_state.recorder.stop_recording()
             st.session_state.is_active = False
             st.rerun()
@@ -64,7 +64,7 @@ def render_recorder(sub_path): # Nhận đường dẫn thư mục bài học co
 
     # --- 5. NÚT MỞ MÁY QUAY ---
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("🚀 MỞ BẢNG ĐIỀU KHIỂN NỔI", type="primary", use_container_width=True):
+    if st.button("🚀 MỞ BẢNG ĐIỀU KHIỂN NỔI", type="primary", width='stretch'):
         # Xóa clip cũ của bài học này để quay mới
         if os.path.exists(video_raw_file):
             try: os.remove(video_raw_file)
@@ -89,9 +89,9 @@ def render_recorder(sub_path): # Nhận đường dẫn thư mục bài học co
         st.video(video_raw_file)
         
         col1, col2 = st.columns(2)
-        if col1.button("✨ Tiến hành Biên tập AI", type="primary", use_container_width=True):
+        if col1.button("✨ Tiến hành Biên tập AI", type="primary", width='stretch'):
             st.session_state.active_tab = TAB_EDITOR
             st.rerun()
-        if col2.button("🗑️ Xóa bản quay này", use_container_width=True):
+        if col2.button("🗑️ Xóa bản quay này", width='stretch'):
             os.remove(video_raw_file)
             st.rerun()

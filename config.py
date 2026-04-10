@@ -9,8 +9,14 @@ class Config:
     # 1. THÔNG TIN HỆ THỐNG
     # ==========================================
     TARGET_DOMAIN = "https://giaiphapvang.net"
-    APP_NAME = "Ứng Dụng Vàng"
     APP_SLUG = 'ung_dung_vang'
+    ROOT_DIR = Path(__file__).parent.absolute()
+    DB_PATH = ROOT_DIR / "database.db"
+    BASE_STORAGE = ROOT_DIR / "storage"
+    SLOGANT = 'Giải Pháp Toàn Diện Cho Ngành Kim Hoàn'
+
+    # Danh sách các từ khóa gây loãng, sẽ bị loại bỏ khỏi tên folder
+    REDUNDANT_KEYWORDS = ['chung', 'default', 'home', 'mac_dinh']
 
     @classmethod
     def get_current_time(cls):
@@ -20,11 +26,6 @@ class Config:
     # ==========================================
     # 2. ĐƯỜNG DẪN HỆ THỐNG (PATHS)
     # ==========================================
-    ROOT_DIR = Path(__file__).parent.absolute()
-    BASE_STORAGE = ROOT_DIR / "storage"
-    DB_PATH = ROOT_DIR / "database.db"
-    AI_CACHE_PATH = BASE_STORAGE / "ai_scripts_cache.json"
-
     @classmethod
     def get_javascript_path(cls, filename):
         """Trả về đối tượng Path để Engine có thể dùng .exists() và .read_text()"""
@@ -39,50 +40,43 @@ class Config:
     # 3. CÔNG CỤ CHUẨN HÓA (UTILITIES)
     # ==========================================
     @staticmethod
-    def slugify(text, max_length=40): # Tăng lên 40 để tên module không bị cụt
-        if not text: return "unknown"
+    def slugify(text, max_length=40):
+        if not text: return ""
         
-        # 1. Tách ID ở đầu (Ví dụ: "49 | Ngân hàng" -> ID="49", Text="Ngân hàng")
-        prefix_id = ""
-        # Regex tìm số ở đầu, theo sau là các ký tự ngăn cách như |, _, -, hoặc khoảng trắng
-        id_match = re.match(r'^(\d+)[_\s|.-]*(.*)', text.strip())
-        
-        if id_match:
-            prefix_id = id_match.group(1) + "_"
-            text = id_match.group(2)
-
-        # 2. Chuẩn hóa tiếng Việt (Bỏ dấu)
+        # Chuẩn hóa tiếng Việt & bỏ dấu
         text = unicodedata.normalize('NFD', text)
-        text = ''.join(c for c in text if unicodedata.category(c) != 'Mn')
-        text = text.replace('đ', 'd').replace('Đ', 'D')
+        text = ''.join(c for c in text if unicodedata.category(c) != 'Mn').replace('đ', 'd').replace('Đ', 'D')
         
-        # 3. Làm sạch chữ: bỏ ký tự đặc biệt, thay khoảng trắng bằng gạch dưới
+        # Làm sạch ký tự đặc biệt
         text = re.sub(r'[^a-zA-Z0-9\s-]', '', text)
-        text = re.sub(r'[\s-]+', '_', text.lower()).strip('_')
         
-        # 4. Cắt ngắn tên chữ (không tính ID) để folder gọn
-        clean_text = text[:max_length].rstrip('_')
+        # Chuyển về snake_case
+        slug = re.sub(r'[\s-]+', '_', text.lower()).strip('_')
         
-        return f"{prefix_id}{clean_text}"
+        # NGOẠI LỆ: Nếu gặp các từ khóa thiết lập, gom về 'settings' cho chuyên nghiệp
+        if slug in ['chung', 'default', 'thiet_lap', 'cai_dat']:
+            return 'settings'
+            
+        return slug[:max_length]
 
     @classmethod
     def get_path(cls, *args, **kwargs):
         """
-        Tạo folder phân cấp: storage/ung_dung_vang/cap_1/cap_2/assets
-        Truyền vào: Config.get_path("49 | Hệ thống | Ngân hàng", asset_type="assets")
+        Tạo folder: storage/ung_dung_vang/he_thong/settings/thong_tin_cong_ty/metadata
+        Phân cấp đúng theo Menu thực tế.
         """
         target_path = cls.BASE_STORAGE / cls.APP_SLUG
         asset_type = kwargs.get('asset_type')
 
         if args and args[0]:
-            # Tách chuỗi theo dấu | để tạo folder lồng nhau
-            full_str = str(args[0])
-            parts = [p.strip() for p in full_str.split('|') if p.strip()]
+            # Tách chuỗi theo dấu | (Ví dụ: Hệ thống | Chung | Thông tin công ty)
+            parts = [p.strip() for p in str(args[0]).split('|') if p.strip()]
             
-            for part in parts:
-                target_path = target_path / cls.slugify(part)
+            for p in parts:
+                slug = cls.slugify(p)
+                if slug:
+                    target_path = target_path / slug
         
-        # Thêm folder con cuối cùng nếu có (ví dụ: assets, logs)
         if asset_type:
             target_path = target_path / asset_type
             
@@ -92,7 +86,7 @@ class Config:
     @classmethod
     def init_folders(cls):
         cls.BASE_STORAGE.mkdir(parents=True, exist_ok=True)
-        print(f"📂 Hệ thống lưu trữ sẵn sàng tại: {cls.BASE_STORAGE}")
+        print(f"📂 Hệ thống lưu trữ sẵn sàng tại: {cls.BASE_STORAGE / cls.APP_SLUG}")
 
-# Tự động khởi tạo folder gốc khi load Config
+# Tự động chạy khi import
 Config.init_folders()

@@ -108,7 +108,7 @@ def render_auto_recorder(sub_path, kb_instance):
 
         st.divider()
 
-        if st.button("🎬 KÍCH HOẠT ROBOT DIỄN THẬT", use_container_width=True, type="primary"):
+        if st.button("🎬 KÍCH HOẠT ROBOT DIỄN THẬT", width='stretch', type="primary"):
             raw_folder = os.path.join(sub_path, "raw")
             if not os.path.exists(raw_folder):
                 os.makedirs(raw_folder)

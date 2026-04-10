@@ -46,10 +46,104 @@ class AutoVideoEngine:
         return len(missing) == 0, missing
 
 
-    async def run_studio_bot(self, target_url, script_steps, project_name, module_name, form_name):
+    # async def run_studio_bot(self, target_url, script_steps, project_name, module_name, form_name):
+    #     """
+    #     THỰC THI DIỄN XUẤT TỰ ĐỘNG
+    #     """
+    #     # 1. Tinh lọc kịch bản (Trị lỗi NoneType từ AI)
+    #     script_steps = self._refine_script(script_steps)
+    #     ready, missing = self.check_ready_for_production(script_steps)
+    #     if not ready:
+    #         print(f"🚨 Engine chưa sẵn sàng. Thiếu: {missing}")
+    #         return None
+
+    #     # 2. Thiết lập đường dẫn làm việc
+    #     video_dir = Config.get_asset_path(project_name, module_name, form_name, asset_type="videos")
+    #     os.makedirs(video_dir, exist_ok=True)
+    #     print(f"📂 [PATH]: Thư mục làm việc: {video_dir}")
+        
+    #     raw_video_path = None
+    #     audio_sync_data = []
+    #     audio_paths = []
+
+    #     async with async_playwright() as p:
+    #         browser = await p.chromium.launch(headless=False, args=["--start-maximized"])
+
+    #         # --- GIAI ĐOẠN 1: LOGIN ---
+    #         print("🔍 [Thám thính]: Đang chuẩn bị phiên đăng nhập...")
+    #         probe_context = await browser.new_context(no_viewport=True)
+    #         probe_page = await probe_context.new_page()
+            
+    #         if not await self.auth_machine.login(probe_page):
+    #             print("❌ Dọn sân thất bại: Không thể đăng nhập.")
+    #             await browser.close()
+    #             return None
+            
+    #         await probe_page.goto(target_url or self.target_domain, wait_until="networkidle")
+    #         state = await probe_context.storage_state()
+    #         await probe_context.close() 
+
+    #         # --- GIAI ĐOẠN 2: RECORDING ---
+    #         print(f"🎬 [Bấm máy]: Bắt đầu ghi hình tại: {video_dir}")
+    #         video_context = await browser.new_context(
+    #             storage_state=state, 
+    #             no_viewport=True, 
+    #             record_video_dir=video_dir, 
+    #             record_video_size={'width': 1920, 'height': 1080}
+    #         )
+    #         page = await video_context.new_page()
+    #         await page.goto(target_url, wait_until="networkidle")
+    #         await asyncio.sleep(2) 
+
+    #         try:
+    #             # Thực thi diễn xuất chính
+    #             acting_result = await self._perform_acting(page, script_steps, video_dir)
+                
+    #             if acting_result and isinstance(acting_result, tuple):
+    #                 audio_sync_data, audio_paths = acting_result
+    #             else:
+    #                 audio_sync_data, audio_paths = [], []
+
+    #             await asyncio.sleep(2) # End-card
+                
+    #             # Quan trọng: Lấy path video thô trước khi đóng context
+    #             raw_video_path = await page.video.path()
+    #             await video_context.close()
+    #             print(f"📹 [VIDEO RAW]: {raw_video_path}")
+                
+    #         except Exception as e:
+    #             print(f"❌ Lỗi nghiêm trọng trong lúc quay: {e}")
+    #             traceback.print_exc()
+    #         finally:
+    #             await browser.close()
+
+    #     # --- GIAI ĐOẠN 3: HẬU KỲ ---
+    #     if raw_video_path and os.path.exists(raw_video_path) and audio_sync_data:
+    #         print(f"🎞️ [Hậu kỳ]: Bắt đầu Render video cuối cùng...")
+    #         return self._run_post_production(
+    #             raw_path=raw_video_path, 
+    #             sync_data=audio_sync_data, 
+    #             steps=script_steps, 
+    #             video_dir=video_dir, 
+    #             form_name=form_name, 
+    #             audio_files=audio_paths
+    #         )
+        
+    #     print("⚠️ Không đủ điều kiện để hậu kỳ (Thiếu video hoặc audio sync).")
+    #     return None
+    
+    async def run_studio_bot(self, target_url=None, script_steps=None, project_name=None, module_name=None, form_name=None, **kwargs):
         """
-        THỰC THI DIỄN XUẤT TỰ ĐỘNG
+        THỰC THI DIỄN XUẤT TỰ ĐỘNG - GPV STUDIO BOT
+        Bản cập nhật: Chống lỗi thiếu tham số và tự động định cấu hình đường dẫn.
         """
+        # 0. Xử lý tham số linh hoạt (Fallback)
+        target_url = target_url or self.target_domain
+        # Nếu bên Orchestrator truyền project_folder thay vì project_name thì vẫn nhận được
+        project_name = project_name or kwargs.get('project_folder') or "GPV_Production"
+        module_name = module_name or "Chung"
+        form_name = form_name or "Trang_Chu"
+
         # 1. Tinh lọc kịch bản (Trị lỗi NoneType từ AI)
         script_steps = self._refine_script(script_steps)
         ready, missing = self.check_ready_for_production(script_steps)
@@ -57,7 +151,7 @@ class AutoVideoEngine:
             print(f"🚨 Engine chưa sẵn sàng. Thiếu: {missing}")
             return None
 
-        # 2. Thiết lập đường dẫn làm việc
+        # 2. Thiết lập đường dẫn làm việc (Sử dụng Config của Vũ)
         video_dir = Config.get_asset_path(project_name, module_name, form_name, asset_type="videos")
         os.makedirs(video_dir, exist_ok=True)
         print(f"📂 [PATH]: Thư mục làm việc: {video_dir}")
@@ -67,9 +161,10 @@ class AutoVideoEngine:
         audio_paths = []
 
         async with async_playwright() as p:
+            # Khởi chạy trình duyệt (Headless=False để xem Bot diễn)
             browser = await p.chromium.launch(headless=False, args=["--start-maximized"])
 
-            # --- GIAI ĐOẠN 1: LOGIN ---
+            # --- GIAI ĐOẠN 1: LOGIN (Lấy Session/State) ---
             print("🔍 [Thám thính]: Đang chuẩn bị phiên đăng nhập...")
             probe_context = await browser.new_context(no_viewport=True)
             probe_page = await probe_context.new_page()
@@ -79,11 +174,12 @@ class AutoVideoEngine:
                 await browser.close()
                 return None
             
-            await probe_page.goto(target_url or self.target_domain, wait_until="networkidle")
+            # Sau khi login xong, lấy trạng thái storage để tái sử dụng
+            await probe_page.goto(target_url, wait_until="networkidle")
             state = await probe_context.storage_state()
             await probe_context.close() 
 
-            # --- GIAI ĐOẠN 2: RECORDING ---
+            # --- GIAI ĐOẠN 2: RECORDING (Ghi hình diễn xuất) ---
             print(f"🎬 [Bấm máy]: Bắt đầu ghi hình tại: {video_dir}")
             video_context = await browser.new_context(
                 storage_state=state, 
@@ -92,11 +188,13 @@ class AutoVideoEngine:
                 record_video_size={'width': 1920, 'height': 1080}
             )
             page = await video_context.new_page()
+            
+            # Đi tới trang đích để bắt đầu diễn
             await page.goto(target_url, wait_until="networkidle")
-            await asyncio.sleep(2) 
+            await asyncio.sleep(2) # Đợi page ổn định
 
             try:
-                # Thực thi diễn xuất chính
+                # Thực thi diễn xuất chính từ StudioMachine
                 acting_result = await self._perform_acting(page, script_steps, video_dir)
                 
                 if acting_result and isinstance(acting_result, tuple):
@@ -104,10 +202,12 @@ class AutoVideoEngine:
                 else:
                     audio_sync_data, audio_paths = [], []
 
-                await asyncio.sleep(2) # End-card
+                await asyncio.sleep(2) # Đợi End-card/Cảnh cuối
                 
-                # Quan trọng: Lấy path video thô trước khi đóng context
+                # QUAN TRỌNG: Phải lấy path video trước khi đóng context
                 raw_video_path = await page.video.path()
+                
+                # Đóng context để Playwright "nhả" file video ra ổ đĩa
                 await video_context.close()
                 print(f"📹 [VIDEO RAW]: {raw_video_path}")
                 
@@ -117,9 +217,10 @@ class AutoVideoEngine:
             finally:
                 await browser.close()
 
-        # --- GIAI ĐOẠN 3: HẬU KỲ ---
+        # --- GIAI ĐOẠN 3: HẬU KỲ (Render sản phẩm cuối) ---
         if raw_video_path and os.path.exists(raw_video_path) and audio_sync_data:
             print(f"🎞️ [Hậu kỳ]: Bắt đầu Render video cuối cùng...")
+            # Gọi PostProductionMachine để ghép Audio, Subtitle và Logo
             return self._run_post_production(
                 raw_path=raw_video_path, 
                 sync_data=audio_sync_data, 

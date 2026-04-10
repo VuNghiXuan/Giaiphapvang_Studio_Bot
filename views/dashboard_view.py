@@ -19,7 +19,7 @@ def render_normal_logic(ctrl, p, ai_script): # Vũ nhớ check xem đã nhận a
         # Key độc nhất dựa trên ID dự án để tránh xung đột widget
         sub_n = col_in.text_input("Tên bài học mới:", placeholder="Nhập tên bài học...", key=f"input_add_{p['id']}")
         
-        if col_btn.button("➕ THÊM BÀI", use_container_width=True, type="primary"):
+        if col_btn.button("➕ THÊM BÀI", width='stretch', type="primary"):
             if sub_n: 
                 # SỬA LỖI TẠI ĐÂY: Truyền tên tham số rõ ràng để không bao giờ bị lệch cột
                 ctrl.add_sub_content(
@@ -57,7 +57,7 @@ def render_dashboard(ctrl):
     # --- SIDEBAR ---
     with st.sidebar:
         st.markdown("### 🚀 Studio Control")
-        if st.button("🔄 LÀM MỚI", use_container_width=True): 
+        if st.button("🔄 LÀM MỚI", width='stretch'): 
             st.rerun()
         st.divider()
         st.caption(f"📍 Storage: {Config.BASE_STORAGE}")
@@ -106,7 +106,7 @@ def render_dashboard(ctrl):
             st.subheader("🆕 Thiết lập dự án mới")
             new_name = st.text_input("Nhập tên dự án Vũ muốn đặt:", placeholder="Ví dụ: Dự án Xây Dựng, Video TikTok...")
             
-            if st.button("💾 LƯU VÀO DATABASE", type="primary", use_container_width=True):
+            if st.button("💾 LƯU VÀO DATABASE", type="primary", width='stretch'):
                 if new_name:
                     if new_name in db_titles:
                         st.error("Tên này có rồi Vũ ơi, đặt tên khác đi!")
@@ -123,7 +123,7 @@ def render_dashboard(ctrl):
 
     if selected_p_title == GPV_NAME and p is None:
         st.warning(f"⚠️ Dự án '{GPV_NAME}' chưa được khởi tạo trong Database.")
-        if st.button(f"🚀 KÍCH HOẠT DỰ ÁN {GPV_NAME.upper()}", type="primary", use_container_width=True):
+        if st.button(f"🚀 KÍCH HOẠT DỰ ÁN {GPV_NAME.upper()}", type="primary", width='stretch'):
             if ctrl.create_tutorial(GPV_NAME):
                 st.success("Khởi tạo Ứng Dụng Vàng thành công!")
                 st.session_state.selected_project_title = GPV_NAME

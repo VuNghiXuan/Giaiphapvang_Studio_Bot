@@ -83,7 +83,7 @@ def main():
             st.success(f"📁 Dự án: **{p['title']}**")
             st.info(f"📹 Bài: **{s['sub_title']}**")
             
-            if st.button("⬅️ THOÁT STUDIO", use_container_width=True, type="primary"):
+            if st.button("⬅️ THOÁT STUDIO", width='stretch', type="primary"):
                 st.session_state.view = "dashboard"
                 st.rerun()
             

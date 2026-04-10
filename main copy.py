@@ -46,7 +46,7 @@ def main():
         with st.expander("➕ TẠO DỰ ÁN MỚI"):
             c1, c2 = st.columns([3, 1])
             n = c1.text_input("Tên dự án:")
-            if c2.button("Tạo ngay", use_container_width=True):
+            if c2.button("Tạo ngay", width='stretch'):
                 if n: ctrl.create_tutorial(n); st.rerun()
 
         st.divider()
@@ -57,7 +57,7 @@ def main():
                 col_txt.subheader(f"📁 {p['title']}")
                 
                 b1, b2, b3 = col_btn.columns(3)
-                if b1.button("📖 Xem", key=f"v_{p['id']}", use_container_width=True):
+                if b1.button("📖 Xem", key=f"v_{p['id']}", width='stretch'):
                     st.session_state.active_project = p
                     st.session_state.view = "sub_category"
                     st.rerun()
@@ -105,7 +105,7 @@ def main():
         # --- SIDEBAR CẤU HÌNH AI & GIỌNG ĐỌC ---
         with st.sidebar:
             st.markdown(f"### 🎯 Studio: \n**{s['sub_title']}**")
-            if st.button("⬅️ THOÁT STUDIO", use_container_width=True):
+            if st.button("⬅️ THOÁT STUDIO", width='stretch'):
                 st.session_state.view = "sub_category"; st.rerun()
             
             st.divider()

@@ -126,7 +126,7 @@ def render_auto_recorder(sub_path):
 
         st.divider()
 
-        if st.button("🎬 BẮT ĐẦU QUAY THEO KỊCH BẢN", use_container_width=True, type="primary"):
+        if st.button("🎬 BẮT ĐẦU QUAY THEO KỊCH BẢN", width='stretch', type="primary"):
             raw_folder = os.path.join(sub_path, "raw")
             if not os.path.exists(raw_folder): os.makedirs(raw_folder)
 
