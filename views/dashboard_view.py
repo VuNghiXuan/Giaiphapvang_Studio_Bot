@@ -132,14 +132,16 @@ def render_dashboard(ctrl):
 
 
     if p:
-        # Kiểm tra nếu là dự án Ứng Dụng Vàng
-        is_gpv = any(kw in p['title'].lower() for kw in ["ứng dụng vàng", "ungdungvang", "udv", "ứng dụng"])
+        # Lấy folder name từ dự án hoặc slugify tiêu đề
+        p_folder = p.get('folder_name')
+        
+        # CHUẨN HÓA: Check dựa trên APP_SLUG trong Config
+        # Logic: Nếu tên folder dự án trùng với Config.APP_SLUG thì đó là GPV
+        is_gpv = (p_folder == Config.APP_SLUG)
         
         if is_gpv:
-            # Đảm bảo truyền ai_script vào để đồng bộ logic AI bên trong GPV
             render_gpv_logic(ctrl, p, ai_script) 
         else:
-            # Dự án thường cũng cần ai_script cho các tính năng bổ trợ trong GPVComponent
             render_normal_logic(ctrl, p, ai_script)
     else:
         st.error("Dữ liệu dự án có vấn đề. Hãy bấm 'Làm mới' ở Sidebar.")

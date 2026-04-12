@@ -145,3 +145,58 @@ Mỗi Trang con = 1 File JSON/Excel.
 
 Bên trong File: Chia rõ 3 Tab: Hành động, Nhập liệu, Cấu trúc bảng.
 """
+
+
+"""
+1. Tư duy "Vét cạn" (Deep & Recursive Scraping)
+Không chỉ đứng nhìn: Bot phải thực hiện hành động (Click/Hover) để bóc tách các lớp dữ liệu ẩn.
+
+Truy vết đa tầng: Khi nhấn vào một nút, nếu hiện ra Popup (Form con) hay Table con (Nested Table), Bot phải tiếp tục "nhảy" vào đó để vét hết thông tin, không được bỏ sót bất kỳ ngóc ngách nào.
+
+Vét nhầm hơn bỏ sót: Thu thập mọi thứ từ thanh cuộn (Sidebar/Table), các nút ẩn trong cột chức năng, cho đến các lỗi (Validation) khi nhập liệu sai.
+
+2. Cấu trúc dữ liệu "Cha - Con" (Object-Oriented Metadata)
+Ông muốn tổ chức dữ liệu theo dạng đối tượng lồng nhau để AI dễ hình dung:
+
+Cha (Menu/Module): Tên, loại thực thể (nút hay menu), lộ trình di chuyển.
+
+Con (Form/Giao diện): * Thanh công cụ (Top Bar): Tên nút, màu sắc, vị trí, chức năng.
+
+Bảng (Data Table): Tên cột, loại cột (chứa dữ liệu hay chứa nút chức năng như Sửa/Xóa/Xuất file).
+
+Trường nhập liệu (Inputs): Tên nhãn (Label), loại (Textbox, Combobox), mối liên kết giữa các bảng (ví dụ: chọn Nhân viên từ bảng Nhân sự).
+
+Trạng thái vật lý: Có thanh cuộn ngang/dọc không, nút có bị ẩn đi không.
+
+3. Mục đích: "Bức thư hoàn hảo" cho biên kịch AI
+Dữ liệu này phục vụ việc viết một kịch bản video tự động cực kỳ chi tiết, mô tả như một người hướng dẫn thật thụ:
+
+Dẫn dắt lộ trình: "Đăng nhập -> Click Module Hệ thống -> Chọn Thông tin công ty".
+
+Định vị thị giác: AI phải biết mô tả: "Nhìn sang bên phải", "Nhấn vào nút màu xanh ở phía trên", "Cuộn xuống dưới cùng của bảng".
+
+Hành động thực tế: AI mô tả được cả dữ liệu mẫu (mã, tên, số điện thoại) và giải thích ý nghĩa của từng nút (Lưu, Hủy, Lưu và Thêm).
+
+Xử lý tình huống: Hướng dẫn cả cách chọn liên kết giữa các bảng và cách xử lý khi hệ thống báo lỗi.
+
+"""
+
+class Moldules:
+    def __init__(self, siderbar):
+        self.name = 'Hệ thống'
+        self.siderbar=['Thông tin công ty', 'danh mục sản phẩm', 'Người dùng', 'Cấu hình hệ thống']
+
+class SiderBar:
+    def __init__(self, menu_parents):
+        self.name = 'Menu Tổng'
+    def add_menu_parents(self, name, menu_parent):
+        pass
+
+class MenuParents:
+    def __init__(self, menu_childs):
+        self.name = 'Thông tin công ty'
+
+class MenuChilds:
+    def __init__(self, menu_childs):
+        self.name = 'Công ty'
+        self.button_add = 'Chỉnh sửa'

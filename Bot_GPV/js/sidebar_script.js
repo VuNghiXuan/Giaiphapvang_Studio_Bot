@@ -1,9 +1,14 @@
 window.sidebarScraper = {
     expandAll: async () => {
         let expandedSomething = true;
-        while (expandedSomething) {
+        let loopCount = 0;
+        const maxLoops = 20; 
+        const sidebar = document.querySelector('.minimal__nav__scrollbar') || window;
+
+        while (expandedSomething && loopCount < maxLoops) {
             expandedSomething = false;
-            // Tìm các nút chưa mở
+            loopCount++;
+            
             const buttons = Array.from(document.querySelectorAll('.minimal__nav__item__root[role="button"]:not(a)'))
                 .filter(btn => {
                     const isExpanded = btn.getAttribute('aria-expanded') === 'true' || 
@@ -13,31 +18,40 @@ window.sidebarScraper = {
 
             if (buttons.length > 0) {
                 for (const btn of buttons) {
+                    btn.scrollIntoView({ behavior: 'instant', block: 'nearest' });
                     btn.click();
                     expandedSomething = true;
+                    await new Promise(r => setTimeout(r, 200)); // Tăng lên chút cho chắc
                 }
-                // Đợi một khoảng cho tất cả các mục vừa click kịp render
-                await new Promise(r => setTimeout(r, 500));
+                await new Promise(r => setTimeout(r, 600)); 
             }
         }
-        console.log("✅ Đã mở toàn bộ menu!");
+        
+        if (sidebar.scrollTo) sidebar.scrollTo({ top: 0, behavior: 'smooth' });
+        console.log(`✅ [Sidebar]: Đã bung hết menu sau ${loopCount} tầng.`);
     },
 
     extractData: (prefix) => {
         const results = {};
         const links = document.querySelectorAll('a.minimal__nav__item__root');
         
+        // Danh sách các từ khóa cần bỏ qua để không quét thừa
+        const skipKeywords = ['dashboard', 'logout', 'profile', 'change-password', 'thông tin cá nhân'];
+
         links.forEach(a => {
-            if (!a.href || a.href.startsWith('javascript:')) return;
+            const href = a.href;
+            if (!href || href.startsWith('javascript:') || href === "#") return;
+
+            // Kiểm tra link rác
+            const isGarbage = skipKeywords.some(key => href.toLowerCase().includes(key));
+            if (isGarbage) return;
 
             const titleEl = a.querySelector('.minimal__nav__item__title');
             const itemText = (titleEl ? titleEl.innerText : a.innerText).trim();
             
-            // Tìm Group (MUI Collapse)
             const collapseParent = a.closest('.MuiCollapse-root');
             const groupName = collapseParent?.previousElementSibling?.innerText?.trim() || "";
 
-            // Tìm Subheader (Duyệt ngược tìm phần tử có class subheader)
             let subheaderName = "Chung";
             let sibling = a.closest('.minimal__nav__li');
             while (sibling) {
@@ -49,25 +63,27 @@ window.sidebarScraper = {
                 sibling = sibling.previousElementSibling;
             }
 
-            const parentPath = groupName && groupName !== itemText ? `${subheaderName} | ${groupName}` : subheaderName;
-            const fullPath = `${prefix} | ${parentPath} | ${itemText}`;
+            // Tạo đường dẫn chuẩn: Tiền tố | Subheader | Group | Item
+            // Ví dụ: Bán hàng | Danh mục | Đối tác | Khách hàng
+            const pathParts = [prefix, subheaderName];
+            if (groupName && groupName !== itemText) pathParts.push(groupName);
+            pathParts.push(itemText);
+
+            const fullPath = pathParts.join(' | ');
             
             results[fullPath] = {
-                url: a.href,
+                url: href,
                 module_parent: prefix,
-                parent: parentPath,
-                text: itemText,
-                scanned_at: new Date().toISOString() // Dùng ISO cho chuẩn database
+                parent: pathParts.slice(0, -1).join(' | '),
+                text: itemText, // Đây chính là tên "Thực thể" (Entity)
+                scanned_at: new Date().toISOString()
             };
         });
         return results;
     },
 
-    // Hàm tiện ích để chạy cả 2 bước và tải file JSON
     run: async function(prefix) {
         await this.expandAll();
-        const data = this.extractData(prefix);
-        console.table(data); // Xem nhanh kết quả
-        return data;
+        return this.extractData(prefix);
     }
 };

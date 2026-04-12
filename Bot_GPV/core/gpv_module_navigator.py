@@ -6,7 +6,7 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 from config import Config
 from Bot_GPV.ai_film_factory.auth_machine import AuthMachine
-from Bot_GPV.core.gpv_form_miner import FormMiner
+from Bot_GPV.core.gpv_deep_form_miner import DeepFormMiner
 from models.controller import StudioController
 
 
@@ -247,7 +247,7 @@ class ModuleNavigator:
                 await page.wait_for_timeout(1500) 
                 
                 # 2. Khởi tạo miner cho mỗi lần đào (An toàn hơn cho bộ nhớ)
-                miner = FormMiner(page, config_class=Config)
+                miner = DeepFormMiner(page, config_class=Config)
                 
                 # 3. ĐÀO (Nội soi)
                 mining_result = await miner.start_mining(page.url, full_path)
@@ -385,8 +385,8 @@ class ModuleNavigator:
         Nếu trang web dùng cơ chế Click-to-Load thay vì URL trực tiếp.
         Hàm này sẽ trả về kết quả để có thể nạp vào _archive_results.
         """
-        # from Bot_GPV.core.gpv_form_miner import FormMiner
-        miner = FormMiner(page, config_class=Config)
+        # from Bot_GPV.core.gpv_form_miner import DeepFormMiner
+        miner = DeepFormMiner(page, config_class=Config)
         all_data = {}
 
         for parent in menu_structure:

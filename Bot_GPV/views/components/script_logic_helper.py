@@ -7,15 +7,24 @@ class ScriptLogicHelper:
     @staticmethod
     def _get_safe_folders(p, s):
         """
-        Hàm nội bộ để bóc tách folder name chuẩn chỉnh.
-        Thiết quân luật: Phải có sub_folder (định dạng ID_title) mới cho đi tiếp.
+        Đảm bảo lấy được tên folder app và folder con an toàn.
+        p: Có thể là dict hoặc string (project_name)
+        s: Thông tin form (dict)
         """
-        app_folder = p.get('folder_name') or p.get('project_folder')
-        # BẮT BUỘC dùng sub_folder từ DB để khớp với cấu trúc vật lý
-        sub_folder = s.get('sub_folder') 
+        # --- FIX TẠI ĐÂY ---
+        # Nếu p là string (chỉ có tên project), dùng luôn nó làm app_folder
+        if isinstance(p, str):
+            app_folder = p
+        else:
+            # Nếu p là dict, lấy theo key. Nếu không có thì fallback về Config.APP_SLUG
+            app_folder = p.get('folder_name') or p.get('project_folder') or Config.APP_SLUG
         
-        if not app_folder or not sub_folder:
-            return None, None
+        # Tương tự với s (thông tin form)
+        if isinstance(s, str):
+            sub_folder = s
+        else:
+            sub_folder = s.get('sub_folder') or f"Form_{s.get('id', 'Unknown')}"
+            
         return app_folder, sub_folder
 
     @staticmethod

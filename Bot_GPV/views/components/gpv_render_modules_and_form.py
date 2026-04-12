@@ -1,161 +1,190 @@
 import streamlit as st
 import nest_asyncio
+import json
+from datetime import datetime
 from Bot_GPV.core.engine.orchestrator import ModuleOrchestrator 
 from Bot_GPV.utils.async_helper import run_async
 from Bot_GPV.core.gpv_ai_logic_knowledge import AIScripts
 from config import Config
 
-# Đảm bảo async chạy được trong Streamlit
+# Đảm bảo async chạy được trong Streamlit (Tránh lỗi ProactorEventLoop)
 nest_asyncio.apply()
 
-# Khởi tạo AI Script global để fix lỗi ImportError
+# Khởi tạo AI Script global
 ai_script = AIScripts()
 
-def get_orchestrator():
-    """ Khởi tạo Orchestrator an toàn trong session_state """
+def get_orchestrator(ctrl): # Đảm bảo hàm này nhận ctrl
     if "orchestrator" not in st.session_state:
-        st.session_state.orchestrator = ModuleOrchestrator()
+        # from Bot_GPV.core.engine.orchestrator import ModuleOrchestrator
+        # from Bot_GPV.core.config import Config
+        
+        # QUAN TRỌNG: Phải truyền ctrl vào đây!
+        st.session_state.orchestrator = ModuleOrchestrator(
+            config_class=Config, 
+            controller_instance=ctrl # <--- KIỂM TRA DÒNG NÀY
+        )
     return st.session_state.orchestrator
 
 def render_gpv_logic(ctrl, p, _ai_script_param):
     """
-    Giao diện Cấp 1: Dashboard danh sách Modules
+    GIAO DIỆN CẤP 1: Dashboard danh sách Modules (Thẻ Card)
     """
     if "current_modul" not in st.session_state:
         st.session_state.current_modul = "🏠 TẤT CẢ MODULS"
 
-    # FIX: Đảm bảo project_folder luôn chuẩn theo Config
-    project_folder = p.get('folder_name') if p.get('folder_name') else Config.APP_SLUG
-    orch = get_orchestrator()
+    project_folder = Config.APP_SLUG
+    orch = get_orchestrator(ctrl)
 
+    # Điều hướng nếu đang ở trong một Module cụ thể
     if st.session_state.current_modul != "🏠 TẤT CẢ MODULS":
         render_gpv_forms(ctrl, p, st.session_state.current_modul, _ai_script_param)
         return 
 
     st.subheader("📦 Hệ thống Module nghiệp vụ")
     
-    # --- KHU VỰC ĐỒNG BỘ CẤP 1 ---
+    # --- KHU VỰC CÀI ĐẶT & ĐỒNG BỘ ---
     with st.expander("⚙️ CÀI ĐẶT & ĐỒNG BỘ HỆ THỐNG", expanded=False):
+        col_btn, col_info = st.columns([1, 2])
         is_scanning = st.session_state.get("is_scanning", False)
-        btn_label = "🕵️ Đang quét... Vui lòng đợi" if is_scanning else "🔍 QUÉT DANH SÁCH MODULES (CẤP 1)"
+        btn_label = "🕵️ Đang quét..." if is_scanning else "🔍 QUÉT DANH SÁCH MODULES (CẤP 1)"
         
-        if st.button(btn_label, width='stretch', disabled=is_scanning):
+        if col_btn.button(btn_label, width='stretch', disabled=is_scanning):
             st.session_state.is_scanning = True
-            with st.spinner("🤖 Bot đang thâm nhập hệ thống..."):
+            with st.spinner("🤖 Bot đang thâm nhập hệ thống giaiphapvang.net..."):
                 try:
+                    # Chạy Orchestrator để quét danh mục cấp 1 (Menu dọc)
                     run_async(orch.run(
                         mode="HOME_SCAN", 
                         project_folder=project_folder,
                         tutorial_id=p['id']
                     ))
+                    st.toast("✅ Đã cập nhật danh sách Module!", icon="🚀")
                     st.session_state.scan_success = True
                 except Exception as e:
-                    st.error(f"💥 Lỗi: {e}")
+                    st.error(f"💥 Lỗi thâm nhập: {e}")
                 finally:
                     st.session_state.is_scanning = False
             
             if st.session_state.get("scan_success"):
                 del st.session_state["scan_success"]
                 st.rerun()
+        
+        col_info.caption(f"📍 Domain: {Config.TARGET_DOMAIN} | 📂 Storage: {Config.APP_SLUG}")
 
-    # --- RENDER CARD GRID ---
-    db_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
-    
-    # FIX: Lọc danh sách Module sạch hơn, bỏ qua các module kỹ thuật
-    forbidden_display = ['Chung', 'Home', 'Default', 'Settings']
-    # unique_moduls = sorted(list(set([
-    #     s['sub_title'].split('|')[0].strip() 
-    #     for s in db_subs if "|Home" in s['sub_title']
-    #     and s['sub_title'].split('|')[0].strip() not in forbidden_display
-    # ])))
-
+    # --- LẤY DỮ LIỆU TỪ DB ---
+    # Sử dụng hàm get_all_modules mới trong StudioController
     unique_moduls = ctrl.get_all_modules()
+    db_subs = ctrl.get_sub_contents(p['id']) # Lấy toàn bộ để đếm số lượng form
     
     if not unique_moduls:
-        st.info("Chưa có dữ liệu Module. Hãy bấm 'Quét Cấp 1' để bắt đầu.")
+        st.info("Chưa có dữ liệu Module. Hãy bấm 'Quét Cấp 1' để Bot tự động nhận diện danh mục.")
         return
 
+    # --- RENDER CARD GRID (3 CỘT) ---
     cols = st.columns(3)
-    # --- TRONG render_gpv_logic ---
     for i, mod in enumerate(unique_moduls):
-        # Lấy các form con - Ưu tiên lọc theo cột module_name nếu có
+        # Lọc các form thuộc module này (để đếm và check trạng thái)
         child_forms = [
             s for s in db_subs 
             if (s.get('module_name') == mod or s['sub_title'].startswith(f"{mod}|")) 
             and "|Home" not in s['sub_title']
         ]
         
-        # FIX: Check trạng thái nội soi chính xác
-        is_done = any(s.get('status') == "Đã nội soi" for s in child_forms)
+        # Check trạng thái: Nếu có ít nhất 1 form đã nội soi thành công
+        is_done = any(s.get('status') == "Đã quét" for s in child_forms)
         status_icon = "🟢" if is_done else "📁"
+        status_text = "Sẵn sàng" if is_done else "Chưa nội soi"
 
         with cols[i % 3].container(border=True):
             st.markdown(f"#### {status_icon} {mod}")
-            st.caption(f"📄 {len(child_forms)} Form nghiệp vụ")
+            st.caption(f"📄 {len(child_forms)} Form nghiệp vụ | `{status_text}`")
+            
             if st.button(f"Mở Module", key=f"btn_nav_{mod}", width='stretch'):
                 st.session_state.current_modul = mod
                 st.rerun()
 
 def render_gpv_forms(ctrl, p, modul_name, _ai_script_param):
     """
-    Giao diện Cấp 2: Quét chi tiết từng Form
+    GIAO DIỆN CẤP 2: Quét chi tiết và quản lý kịch bản cho từng Form
     """
-    project_folder = p.get('folder_name', Config.APP_SLUG)
-    orch = get_orchestrator()
+    project_folder = Config.APP_SLUG
+    orch = get_orchestrator(ctrl)
     
-    c1, c2 = st.columns([3, 1.2])
-    c1.subheader(f"📂 Module: {modul_name}")
-    
-    if c1.button("⬅️ Quay lại", key="back_to_main"): 
-        st.session_state.current_modul = "🏠 TẤT CẢ MODULS"
-        st.rerun()
-    
-    # Khóa nút tương tự cho Deep Scan
+    # Thanh Header điều hướng
+    header_col1, header_col2 = st.columns([3, 1])
+    with header_col1:
+        if st.button("⬅️ Quay lại Dashboard", key="back_to_main"): 
+            st.session_state.current_modul = "🏠 TẤT CẢ MODULS"
+            st.rerun()
+        st.subheader(f"📂 Module: {modul_name}")
+
+    # Nút Deep Scan (Nội soi toàn bộ)
     is_deep_scanning = st.session_state.get("is_deep_scanning", False)
     deep_btn_label = "🤖 Đang nội soi..." if is_deep_scanning else "🔍 NỘI SOI TOÀN BỘ FORM"
 
-    if c2.button(deep_btn_label, type="primary", width='stretch', disabled=is_deep_scanning):
+    if header_col2.button(deep_btn_label, type="primary", width='stretch', disabled=is_deep_scanning):
         st.session_state.is_deep_scanning = True
-        with st.spinner(f"🕵️ Bot đang bóc tách module {modul_name}..."):
-            db_subs = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
+        with st.spinner(f"🕵️ Bot đang bóc tách từng Form trong module {modul_name}..."):
+            # Tìm trang Home của Module để lấy URL gốc
+            db_subs = ctrl.get_sub_contents(p['id'])
             mod_home = next((s for s in db_subs if s['sub_title'] == f"{modul_name}|Home"), None)
             
             if mod_home and mod_home.get('url'):
-                run_async(orch.run(
-                    mode="DEEP_SCAN",
-                    module_url=mod_home['url'], 
-                    project_folder=project_folder,
-                    modul_name=modul_name,
-                    tutorial_id=p['id']
-                ))
-                st.session_state.deep_scan_done = True
+                try:
+                    run_async(orch.run(
+                        mode="DEEP_SCAN",
+                        module_url=mod_home['url'], 
+                        project_folder=project_folder,
+                        modul_name=modul_name,
+                        tutorial_id=p['id']
+                    ))
+                    st.session_state.deep_scan_done = True
+                except Exception as e:
+                    st.error(f"Lỗi khi nội soi: {e}")
             else:
-                st.error("Không tìm thấy URL gốc!")
+                st.error("Không tìm thấy URL gốc để bắt đầu nội soi!")
         
         st.session_state.is_deep_scanning = False
         if st.session_state.get("deep_scan_done"):
             del st.session_state["deep_scan_done"]
             st.rerun()
 
-    # --- HIỂN THỊ DANH SÁCH ---
-    all_items = [dict(s) for s in ctrl.get_sub_contents(p['id'])]
+    st.divider()
+
+    # --- HIỂN THỊ DANH SÁCH FORM CHI TIẾT ---
+    all_items = ctrl.get_sub_contents(p['id'])
     
-    # Sửa lại logic lọc: Lấy phần đầu của sub_title so sánh cho chắc ăn
+    # Logic lọc chuẩn xác: Theo module_name hoặc prefix sub_title
     current_subs = []
     for s in all_items:
-        title_parts = [part.strip() for part in s['sub_title'].split('|')]
-        # Nếu phần đầu khớp với modul_name và không phải là trang Home
-        if title_parts[0] == modul_name and "Home" not in title_parts:
+        # Bỏ qua trang Home của module, chỉ lấy các trang chức năng (Sửa, Thêm, Danh sách...)
+        if s.get('module_name') == modul_name and "|Home" not in s['sub_title']:
             current_subs.append(s)
 
     if not current_subs:
-        st.warning(f"⚠️ Đã tìm thấy Module nhưng chưa có Form con nào thuộc '{modul_name}'. Hãy bấm 'Nội soi'!")
-        # Debug thử xem DB có gì
-        if st.checkbox("Debug: Xem dữ liệu thô"):
-            st.write(all_items[:3]) 
+        st.warning(f"⚠️ Chưa có Form con nào thuộc '{modul_name}'. Hãy bấm 'NỘI SOI' để Bot quét tự động.")
     else:
-        from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
-        # Gọi Static Method đúng cách (không khởi tạo class)
-        # Sắp xếp theo sub_title để hiển thị đúng thứ tự
-        sorted_subs = sorted(current_subs, key=lambda x: x['sub_title'])
-        RenderForm.render_item_rows(ctrl, p, sorted_subs, _ai_script_param, project_folder)
+        # Import Component hiển thị dòng (Row)
+        try:
+            from Bot_GPV.views.components.gpv_render_forms_detail import RenderForm
+            
+            # Sắp xếp theo vị trí hoặc tên
+            sorted_subs = sorted(current_subs, key=lambda x: (x.get('position', 0), x['sub_title']))
+            
+            # Hiển thị tiêu đề bảng dữ liệu
+            h1, h2, h3, h4 = st.columns([2.5, 1, 1, 1.5])
+            h1.caption("TÊN FORM / CHỨC NĂNG")
+            h2.caption("TRẠNG THÁI")
+            h3.caption("TRI THỨC")
+            h4.caption("THAO TÁC")
+
+            # Gọi Render chi tiết cho từng dòng
+            RenderForm.render_item_rows(
+                ctrl=ctrl, 
+                p=p, 
+                items=sorted_subs, 
+                _ai_script_param=_ai_script_param, 
+                project_folder=project_folder
+            )
+        except ImportError:
+            st.error("❌ Không tìm thấy component 'gpv_render_forms_detail'. Vui lòng kiểm tra lại cấu trúc folder views.")

@@ -62,26 +62,50 @@ class Config:
     @classmethod
     def get_path(cls, *args, **kwargs):
         """
-        Tạo folder: storage/ung_dung_vang/he_thong/settings/thong_tin_cong_ty/metadata
-        Phân cấp đúng theo Menu thực tế.
+        Tạo folder: storage/[tên_dự_án]/[module]/[form]/[asset_type]
         """
-        target_path = cls.BASE_STORAGE / cls.APP_SLUG
+        # 1. Lấy project_slug từ tham số truyền vào (đây là tên folder trong DB)
+        project_slug = kwargs.get('project_slug')
+        
+        if not project_slug:
+            project_slug = cls.APP_SLUG
+        else:
+            # Luôn slugify để đảm bảo không có khoảng trắng/dấu tiếng Việt
+            project_slug = cls.slugify(str(project_slug))
+
+        # 2. Đường dẫn gốc: storage/ungdungvang
+        target_path = cls.BASE_STORAGE / project_slug
         asset_type = kwargs.get('asset_type')
 
+        # 3. Xử lý các cấp con (Hệ thống | Thiết lập | Chi nhánh)
         if args and args[0]:
-            # Tách chuỗi theo dấu | (Ví dụ: Hệ thống | Chung | Thông tin công ty)
             parts = [p.strip() for p in str(args[0]).split('|') if p.strip()]
-            
             for p in parts:
                 slug = cls.slugify(p)
                 if slug:
                     target_path = target_path / slug
         
+        # 4. Thêm loại asset (metadata, videos, audios)
         if asset_type:
             target_path = target_path / asset_type
             
         target_path.mkdir(parents=True, exist_ok=True)
         return target_path
+
+    @classmethod
+    def get_asset_path(cls, module_name, form_name, asset_type="videos"):
+        # 1. Chuẩn hóa (Bỏ project_name vì đã có APP_SLUG làm gốc)
+        safe_m = cls.slugify(module_name)
+        safe_f = cls.slugify(form_name)
+        
+        # 2. Xây dựng Path chuẩn: storage/ung_dung_vang/he_thong/danh_muc_khach_hang/videos
+        base = cls.BASE_STORAGE / cls.APP_SLUG / safe_m / safe_f
+        
+        if asset_type:
+            base = base / asset_type
+            
+        base.mkdir(parents=True, exist_ok=True)
+        return base # Trả về Path object luôn cho tiện
 
     @classmethod
     def init_folders(cls):
